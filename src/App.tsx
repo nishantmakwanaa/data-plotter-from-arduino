@@ -12,7 +12,7 @@ function Header() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Cpu className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-800">Arduino Visualizer</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Data Plotter From Arduino</h1>
           </div>
           <div className="flex space-x-6">
             <Link
@@ -49,9 +49,9 @@ function Footer() {
         <div className="flex justify-between items-center">
           <p className="text-gray-600">© Nishant Makwana, All Rights Reserved.</p>
           <div className="flex space-x-4">
-            <a href="#" className="text-gray-600 hover:text-blue-600 transition-colors">Documentation</a>
-            <a href="#" className="text-gray-600 hover:text-blue-600 transition-colors">GitHub</a>
-            <a href="#" className="text-gray-600 hover:text-blue-600 transition-colors">Support</a>
+            <a href="https://www.nishantworldwide.in/" className="text-gray-600 hover:text-blue-600 transition-colors">Documentation</a>
+            <a href="https://www.github.com/nishantmakwanaa" className="text-gray-600 hover:text-blue-600 transition-colors">GitHub</a>
+            <a href="https://www.nishantworldwide.in/" className="text-gray-600 hover:text-blue-600 transition-colors">Contact Us</a>
           </div>
         </div>
       </div>

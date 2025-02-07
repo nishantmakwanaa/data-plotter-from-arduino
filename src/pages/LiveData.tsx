@@ -43,10 +43,9 @@ export default function LiveData() {
 
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Port Configuration */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <div className="flex items-center space-x-4">
-          <label className="text-gray-700 font-medium">Arduino Port:</label>
+          <label className="text-gray-700 font-medium">Arduino Port :</label>
           <input
             type="text"
             value={port}
