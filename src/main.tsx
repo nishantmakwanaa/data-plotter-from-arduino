@@ -13,7 +13,6 @@ import {
 import App from './App.tsx';
 import './index.css';
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,

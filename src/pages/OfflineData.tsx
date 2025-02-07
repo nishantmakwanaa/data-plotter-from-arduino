@@ -14,8 +14,6 @@ export default function OfflineData() {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      // Here you would typically parse the CSV file
-      // and update the data accordingly
     }
   };
 
@@ -51,7 +49,6 @@ export default function OfflineData() {
 
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* File Upload */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <div className="flex items-center space-x-4">
           <label className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white transition-colors cursor-pointer">
@@ -72,11 +69,14 @@ export default function OfflineData() {
         </div>
       </div>
 
-      {/* Function Controls */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <div className="flex items-center space-x-4">
-          <Function size={24} className="text-gray-600" />
+          <label htmlFor="function-select" className="flex items-center space-x-2">
+            <Function size={24} className="text-gray-600" />
+            <span>Select Function</span>
+          </label>
           <select
+            id="function-select"
             value={selectedFunction}
             onChange={(e) => setSelectedFunction(e.target.value)}
             className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -89,6 +89,7 @@ export default function OfflineData() {
             value={multiplier}
             onChange={(e) => setMultiplier(Number(e.target.value))}
             className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="Enter multiplier"
           />
         </div>
       </div>

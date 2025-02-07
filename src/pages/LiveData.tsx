@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Play, Pause, Download, FunctionSquare as Function } from 'lucide-react';
 import { chartOptions, generateDummyData } from '../utils/chartUtils';
@@ -81,11 +81,12 @@ export default function LiveData() {
         </div>
       </div>
 
-      {/* Function Controls */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <div className="flex items-center space-x-4">
           <Function size={24} className="text-gray-600" />
+          <label htmlFor="function-select" className="sr-only">Select Function</label>
           <select
+            id="function-select"
             value={selectedFunction}
             onChange={(e) => setSelectedFunction(e.target.value)}
             className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -98,11 +99,12 @@ export default function LiveData() {
             value={multiplier}
             onChange={(e) => setMultiplier(Number(e.target.value))}
             className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            title="Multiplier"
+            placeholder="Enter multiplier"
           />
         </div>
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold mb-4">Raw Data</h2>
