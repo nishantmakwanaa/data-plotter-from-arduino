@@ -1,76 +1,24 @@
-import { Cpu } from 'lucide-react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import LiveData from './pages/LiveData';
-import OfflineData from './pages/OfflineData';
-
-function Header() {
-  const location = useLocation();
-  
-  return (
-    <header className="bg-white shadow-lg">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Cpu className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-800">Data Plotter From Arduino</h1>
-          </div>
-          <div className="flex space-x-6">
-            <Link
-              to="/"
-              className={`text-lg font-medium transition-colors ${
-                location.pathname === '/' 
-                  ? 'text-blue-600 border-b-2 border-blue-600' 
-                  : 'text-gray-600 hover:text-blue-600'
-              }`}
-            >
-              Live Data
-            </Link>
-            <Link
-              to="/offline"
-              className={`text-lg font-medium transition-colors ${
-                location.pathname === '/offline'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-blue-600'
-              }`}
-            >
-              Offline Analysis
-            </Link>
-          </div>
-        </div>
-      </nav>
-    </header>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="bg-white shadow-lg mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex justify-between items-center">
-          <p className="text-gray-600">© Nishant Makwana, All Rights Reserved.</p>
-          <div className="flex space-x-4">
-            <a href="https://www.nishantworldwide.in/" className="text-gray-600 hover:text-blue-600 transition-colors">Documentation</a>
-            <a href="https://www.github.com/nishantmakwanaa" className="text-gray-600 hover:text-blue-600 transition-colors">GitHub</a>
-            <a href="https://www.nishantworldwide.in/" className="text-gray-600 hover:text-blue-600 transition-colors">Contact Us</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import LiveMonitoring from './pages/LiveMonitoring';
+import HistoricalData from './pages/HistoricalData';
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen flex flex-col bg-gray-50">
+    <Router>
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <Header />
-        <Routes>
-          <Route path="/" element={<LiveData />} />
-          <Route path="/offline" element={<OfflineData />} />
-        </Routes>
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <Routes>
+            <Route path="/" element={<LiveMonitoring />} />
+            <Route path="/historical" element={<HistoricalData />} />
+          </Routes>
+        </main>
         <Footer />
       </div>
-    </BrowserRouter>
+    </Router>
   );
 }
 
