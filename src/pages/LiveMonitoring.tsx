@@ -90,7 +90,7 @@ const LiveMonitoring = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Multiply By:</label>
+            <label className="text-sm font-medium text-gray-700">Multiply By :</label>
             <input
               type="number"
               value={multiplyFactor}
@@ -101,7 +101,7 @@ const LiveMonitoring = () => {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Divide By:</label>
+            <label className="text-sm font-medium text-gray-700">Divide By :</label>
             <input
               type="number"
               value={divideFactor}
