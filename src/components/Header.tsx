@@ -40,8 +40,15 @@ const Header = () => {
           </div>
 
           <div className="flex flex-col space-y-4 text-center mt-4">
-            <Link
+          <Link
               to="/"
+              onClick={() => setIsDrawerOpen(false)}
+              className="text-gray-800 font-semibold text-lg hover:text-blue-600 transition-colors"
+            >
+              Home
+            </Link>
+            <Link
+              to="/live"
               onClick={() => setIsDrawerOpen(false)}
               className="text-gray-800 font-semibold text-lg hover:text-blue-600 transition-colors"
             >

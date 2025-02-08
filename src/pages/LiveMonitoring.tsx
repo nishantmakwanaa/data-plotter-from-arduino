@@ -1,22 +1,23 @@
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   Legend,
   Brush,
-  ResponsiveContainer 
+  ResponsiveContainer
 } from 'recharts';
 import { Play, Square } from 'lucide-react';
 
-const socket = io('http://localhost:3000');
-
 const LiveMonitoring = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [port, setPort] = useState(3000); // Default port
+  const [socket, setSocket] = useState(() => io(`http://localhost:${port}`));
+
   interface MedicalData {
     timestamp: number;
     originalData: number;
@@ -30,7 +31,10 @@ const LiveMonitoring = () => {
   const [divideFactor, setDivideFactor] = useState(2);
 
   useEffect(() => {
-    socket.on('medicalData', (newData) => {
+    const newSocket = io(`http://localhost:${port}`);
+    setSocket(newSocket);
+
+    newSocket.on('medicalData', (newData) => {
       setData(prevData => [...prevData.slice(-100), {
         ...newData,
         time: new Date(newData.timestamp).toLocaleTimeString()
@@ -38,13 +42,14 @@ const LiveMonitoring = () => {
     });
 
     return () => {
-      socket.off('medicalData');
+      newSocket.off('medicalData');
+      newSocket.disconnect();
     };
-  }, []);
+  }, [port]);
 
   const updateFactors = async () => {
     try {
-      await fetch('http://localhost:3000/update-factors', {
+      await fetch(`http://localhost:${port}/update-factors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +75,20 @@ const LiveMonitoring = () => {
     <div className="space-y-6 p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">Medical Monitoring</h1>
+
         <div className="flex flex-col md:flex-row items-center space-y-2 md:space-x-4 md:space-y-0">
+          {/* Port Input */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Port:</label>
+            <input
+              type="number"
+              value={port}
+              onChange={(e) => setPort(Number(e.target.value))}
+              className="w-20 px-2 py-1 border rounded-md text-center"
+              placeholder="Port"
+            />
+          </div>
+
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Multiply By:</label>
             <input
@@ -93,13 +111,13 @@ const LiveMonitoring = () => {
               placeholder="Divide"
             />
           </div>
+
           <button
             onClick={toggleMonitoring}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto justify-center ${
-              isMonitoring 
-                ? 'bg-red-500 hover:bg-red-600' 
+            className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto justify-center ${isMonitoring
+                ? 'bg-red-500 hover:bg-red-600'
                 : 'bg-green-500 hover:bg-green-600'
-            } text-white`}
+              } text-white`}
           >
             {isMonitoring ? (
               <>

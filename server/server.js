@@ -99,7 +99,6 @@ const generateSimulatedData = () => {
   setTimeout(generateSimulatedData, 1000);
 };
 
-// Try to connect to Arduino
 const connectToArduino = () => {
   SerialPort.list().then(ports => {
     const arduinoPort = ports.find(port => port.manufacturer?.includes('Arduino'));
