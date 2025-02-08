@@ -1,4 +1,3 @@
-import React from 'react';
 import { Heart } from 'lucide-react';
 
 const Footer = () => {
@@ -16,4 +15,4 @@ const Footer = () => {
   );
 }
 
-export default Footer
+export default Footer;

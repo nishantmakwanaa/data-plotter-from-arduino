@@ -18,7 +18,6 @@ const io = new Server(httpServer, {
   }
 });
 
-// Enable CORS for REST endpoints
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -26,7 +25,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const csvFilePath = join(__dirname, 'data.csv');
+const csvFilePath = join(__dirname, 'data/data.csv');
 const csvWriter = createObjectCsvWriter({
   path: csvFilePath,
   header: [
@@ -37,7 +36,6 @@ const csvWriter = createObjectCsvWriter({
   ]
 });
 
-// Create CSV file if it doesn't exist
 if (!fs.existsSync(csvFilePath)) {
   fs.writeFileSync(csvFilePath, 'TIMESTAMP,ORIGINAL_DATA,MULTIPLIED_DATA,DIVIDED_DATA\n');
 }
@@ -47,7 +45,6 @@ let arduinoPort = null;
 let multiplyFactor = 2;
 let divideFactor = 2;
 
-// Update factors endpoint
 app.post('/update-factors', express.json(), (req, res) => {
   const { multiply, divide } = req.body;
   if (multiply) multiplyFactor = parseFloat(multiply);
@@ -55,7 +52,6 @@ app.post('/update-factors', express.json(), (req, res) => {
   res.json({ multiplyFactor, divideFactor });
 });
 
-// Historical data endpoint
 app.get('/historical-data', (req, res) => {
   const results = [];
   fs.createReadStream(csvFilePath)
@@ -72,7 +68,7 @@ app.get('/historical-data', (req, res) => {
       res.json(results);
     })
     .on('error', (error) => {
-      res.status(500).json({ error: 'Failed to read historical data' });
+      res.status(500).json({ error: 'Failed To Read Historical Data.' });
     });
 });
 
@@ -119,15 +115,15 @@ const connectToArduino = () => {
         }
       });
     } else {
-      console.log('No Arduino found, using simulated data');
+      console.log('No Arduino Found, Using Simulated Data.');
     }
   }).catch(err => {
-    console.log('Error connecting to Arduino, using simulated data');
+    console.log('Error Connecting To Arduino, Using Simulated Data.');
   });
 };
 
 io.on('connection', (socket) => {
-  console.log('Client connected');
+  console.log('Client Connected.');
 
   socket.on('startMonitoring', () => {
     isGeneratingData = true;
@@ -139,12 +135,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    console.log('Client Disconnected.');
   });
 });
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server Running On Port : ${PORT}`);
   connectToArduino();
 });

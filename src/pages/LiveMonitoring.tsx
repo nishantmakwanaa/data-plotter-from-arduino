@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { 
   LineChart, 
@@ -17,7 +17,15 @@ const socket = io('http://localhost:3000');
 
 const LiveMonitoring = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [data, setData] = useState<any[]>([]);
+  interface MedicalData {
+    timestamp: number;
+    originalData: number;
+    multipliedData: number;
+    dividedData: number;
+    time: string;
+  }
+
+  const [data, setData] = useState<MedicalData[]>([]);
   const [multiplyFactor, setMultiplyFactor] = useState(2);
   const [divideFactor, setDivideFactor] = useState(2);
 
@@ -44,7 +52,7 @@ const LiveMonitoring = () => {
         body: JSON.stringify({ multiply: multiplyFactor, divide: divideFactor }),
       });
     } catch (error) {
-      console.error('Error updating factors:', error);
+      console.error('Error Updating Factors :', error);
     }
   };
 
@@ -61,26 +69,27 @@ const LiveMonitoring = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Live Heart Rate Monitoring</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Medical Monitoring</h1>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Multiply by:</label>
+            <label className="text-sm font-medium text-gray-700">Multiply By :</label>
             <input
               type="number"
               value={multiplyFactor}
               onChange={(e) => setMultiplyFactor(Number(e.target.value))}
               onBlur={updateFactors}
               className="w-20 px-2 py-1 border rounded"
+              placeholder="Multiply"
             />
           </div>
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Divide by:</label>
             <input
               type="number"
               value={divideFactor}
               onChange={(e) => setDivideFactor(Number(e.target.value))}
               onBlur={updateFactors}
               className="w-20 px-2 py-1 border rounded"
+              placeholder="Divide"
             />
           </div>
           <button
@@ -106,7 +115,6 @@ const LiveMonitoring = () => {
         </div>
       </div>
 
-      {/* Original Signal */}
       <div className="bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-4">Original Signal</h2>
         <ResponsiveContainer width="100%" height={300}>
@@ -129,7 +137,6 @@ const LiveMonitoring = () => {
         </ResponsiveContainer>
       </div>
 
-      {/* Processed Signals */}
       <div className="bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-4">Processed Signals</h2>
         <ResponsiveContainer width="100%" height={300}>
@@ -160,7 +167,6 @@ const LiveMonitoring = () => {
         </ResponsiveContainer>
       </div>
 
-      {/* Relationship Graph */}
       <div className="bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-4">Signal Relationships</h2>
         <ResponsiveContainer width="100%" height={300}>

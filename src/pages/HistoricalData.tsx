@@ -1,21 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const HistoricalData = () => {
-  const [historicalData, setHistoricalData] = useState<any[]>([]);
+  interface HistoricalDataItem {
+    timestamp: string;
+    originalData: number;
+    multipliedData: number;
+    dividedData: number;
+    time: string;
+  }
+
+  const [historicalData, setHistoricalData] = useState<HistoricalDataItem[]>([]);
 
   useEffect(() => {
-    // In a real application, this would fetch from your backend
     fetch('http://localhost:3000/historical-data')
       .then(res => res.json())
       .then(data => {
-        const formattedData = data.map((item: any) => ({
+        const formattedData = data.map((item: HistoricalDataItem) => ({
           ...item,
           time: new Date(item.timestamp).toLocaleTimeString()
         }));
         setHistoricalData(formattedData);
       })
-      .catch(err => console.error('Error fetching historical data:', err));
+      .catch(err => console.error('Error Fetching Historical Data :', err));
   }, []);
 
   return (

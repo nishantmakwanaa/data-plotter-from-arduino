@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 
@@ -9,7 +8,7 @@ const Header = () => {
         <nav className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <Activity className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-800">MedicalMonitor</span>
+            <span className="text-xl font-bold text-gray-800">Medical Monitoring App</span>
           </Link>
           <div className="space-x-6">
             <Link 
