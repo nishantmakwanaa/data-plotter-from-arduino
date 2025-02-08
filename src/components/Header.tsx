@@ -6,7 +6,7 @@ const Header = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-white shadow-md relative">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         
         <Link to="/" className="flex items-center space-x-2">
@@ -43,7 +43,7 @@ const Header = () => {
           </div>
 
           <div className="flex flex-col space-y-4 text-center mt-4">
-          <Link
+            <Link
               to="/"
               onClick={() => setIsDrawerOpen(false)}
               className="text-gray-800 font-semibold text-lg hover:text-blue-600 transition-colors"
