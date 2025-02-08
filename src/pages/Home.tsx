@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 const Home = () => {
   return (
     <div 
-      className="h-screen flex flex-col items-center justify-center px-6 bg-cover bg-center space-y-8" 
-      style={{ backgroundImage: "url('/medical-chart-bg.jpg')" }}
+      className="h-screen flex flex-col items-center justify-center px-6 bg-cover bg-center space-y-8 home-background"
     >
       <h1 className="text-5xl font-bold text-black text-center drop-shadow-lg">
         Welcome To Our Medical Data Analytics Platform
