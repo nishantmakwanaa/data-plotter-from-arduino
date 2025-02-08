@@ -16,6 +16,9 @@ const Header = () => {
 
         <div className="hidden md:flex space-x-6">
           <Link to="/" className="text-gray-600 font-semibold hover:text-blue-600 transition-colors">
+            Home
+          </Link>
+          <Link to="/live" className="text-gray-600 font-semibold hover:text-blue-600 transition-colors">
             Live
           </Link>
           <Link to="/historical" className="text-gray-600 font-semibold hover:text-blue-600 transition-colors">
