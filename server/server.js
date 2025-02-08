@@ -95,31 +95,48 @@ const applyFunction = (data, operation, value) => {
   }
 };
 
-app.get('/api/ports', async (req, res) => {
+app.get('/api/available-ports', async (req, res) => {
   try {
     const ports = await SerialPort.list();
-    res.json(ports.map(port => ({ path: port.path, manufacturer: port.manufacturer })));
+    const usbPorts = ports.filter(port => port.manufacturer?.includes('Arduino') || port.manufacturer?.includes('Raspberry Pi'));
+
+    if (usbPorts.length > 0) {
+      res.json(usbPorts.map(port => ({ path: port.path, manufacturer: port.manufacturer })));
+    } else {
+      res.json([{ path: 'localhost', manufacturer: 'Localhost' }]);
+    }
   } catch {
     res.status(500).json({ error: 'Failed To Retrieve Ports.' });
   }
 });
 
-app.post('/api/start', (req, res) => {
-  isGeneratingData = true;
-  generateSimulatedData();
-  res.json({ message: 'Data Streaming Started.' });
+app.post('/api/port/live-data', (req, res) => {
+  const { port } = req.body;
+  if (!port) {
+    return res.status(400).json({ error: 'Port is required.' });
+  }
+  if (port === 'localhost') {
+    isGeneratingData = true;
+    generateSimulatedData();
+    res.json({ message: 'Simulated Data Streaming Started.' });
+  } else {
+    res.json({ message: `Data Streaming Started On Port ${port}.` });
+  }
 });
 
-app.post('/api/stop', (req, res) => {
-  isGeneratingData = false;
-  res.json({ message: 'Data Streaming Stopped.' });
+app.post('/api/port/live-data/function', (req, res) => {
+  const { operation, value } = req.body;
+  if (!['multiply', 'divide', 'add', 'subtract'].includes(operation) || isNaN(value)) {
+    return res.status(400).json({ error: 'Invalid Operation Or Value.' });
+  }
+  res.json({ message: 'Function Applied To Live Data.' });
 });
 
-app.get('/api/status', (req, res) => {
-  res.json({ monitoring: isGeneratingData });
+app.get('/api/port/live-data/relation', (req, res) => {
+  res.json({ message: 'Relation Between Live Data And Modified Data.' });
 });
 
-app.get('/api/offline', (req, res) => {
+app.get('/api/read-data', (req, res) => {
   const results = [];
   fs.createReadStream(csvFilePath)
     .pipe(csv())
@@ -132,34 +149,26 @@ app.get('/api/offline', (req, res) => {
     .on('error', () => res.status(500).json({ error: 'Failed To Read Data.' }));
 });
 
-app.get('/api/offline/:operation/:value', (req, res) => {
-  const { operation, value } = req.params;
-  const factor = parseFloat(value);
-
-  if (isNaN(factor) || !['multiply', 'divide', 'add', 'subtract'].includes(operation)) {
-    return res.status(400).json({ error: 'Invalid Operation Or Factor.' });
+app.post('/api/read-data/function', (req, res) => {
+  const { operation, value } = req.body;
+  if (!['multiply', 'divide', 'add', 'subtract'].includes(operation) || isNaN(value)) {
+    return res.status(400).json({ error: 'Invalid Operation Or Value.' });
   }
-
   const results = [];
   fs.createReadStream(csvFilePath)
     .pipe(csv())
     .on('data', (data) => results.push({
       timestamp: parseInt(data.TIMESTAMP),
       originalData: parseFloat(data.ORIGINAL_DATA),
-      modifiedData: applyFunction(parseFloat(data.ORIGINAL_DATA), operation, factor),
+      modifiedData: applyFunction(parseFloat(data.ORIGINAL_DATA), operation, value),
       source: data.SOURCE
     }))
     .on('end', () => res.json(results))
     .on('error', () => res.status(500).json({ error: 'Failed To Read Data.' }));
 });
 
-app.delete('/api/offline', (req, res) => {
-  try {
-    fs.writeFileSync(csvFilePath, 'TIMESTAMP,ORIGINAL_DATA,SOURCE\n');
-    res.json({ message: 'Offline data cleared' });
-  } catch {
-    res.status(500).json({ error: 'Failed To Clear Data.' });
-  }
+app.get('/api/read-data/relation', (req, res) => {
+  res.json({ message: 'Relation Between CSV Data And Modified CSV Data.' });
 });
 
 io.on('connection', (socket) => {
@@ -185,6 +194,6 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server Running On Port : ${PORT}`);
+  console.log(`Server Is Running On Port : ${PORT}`);
   connectToArduino();
 });

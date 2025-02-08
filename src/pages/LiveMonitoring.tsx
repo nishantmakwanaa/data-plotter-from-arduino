@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -15,60 +14,24 @@ import { Play, Square } from 'lucide-react';
 
 const LiveMonitoring = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [port, setPort] = useState(3000); // Default port
-  const [socket, setSocket] = useState(() => io(`http://localhost:${port}`));
-
-  interface MedicalData {
-    timestamp: number;
-    originalData: number;
-    multipliedData: number;
-    dividedData: number;
-    time: string;
-  }
-
-  const [data, setData] = useState<MedicalData[]>([]);
+  const [port, setPort] = useState(''); // Default port
+  const [availablePorts, setAvailablePorts] = useState([
+    { path: 'COM3', manufacturer: 'Arduino' },
+    { path: 'localhost', manufacturer: 'Localhost' }
+  ]); // Example available ports
+  const [data, setData] = useState([]);
   const [multiplyFactor, setMultiplyFactor] = useState(2);
   const [divideFactor, setDivideFactor] = useState(2);
 
-  useEffect(() => {
-    const newSocket = io(`http://localhost:${port}`);
-    setSocket(newSocket);
-
-    newSocket.on('medicalData', (newData) => {
-      setData(prevData => [...prevData.slice(-100), {
-        ...newData,
-        time: new Date(newData.timestamp).toLocaleTimeString()
-      }]);
-    });
-
-    return () => {
-      newSocket.off('medicalData');
-      newSocket.disconnect();
-    };
-  }, [port]);
-
-  const updateFactors = async () => {
-    try {
-      await fetch(`http://localhost:${port}/update-factors`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ multiply: multiplyFactor, divide: divideFactor }),
-      });
-    } catch (error) {
-      console.error('Error Updating Factors :', error);
-    }
+  const updateFactors = () => {
+    console.log('Updated Factors:', { multiply: multiplyFactor, divide: divideFactor });
+    // Logic to apply factors to data can be added here
   };
 
   const toggleMonitoring = () => {
-    if (!isMonitoring) {
-      socket.emit('startMonitoring');
-      setData([]);
-    } else {
-      socket.emit('stopMonitoring');
-    }
     setIsMonitoring(!isMonitoring);
+    console.log(isMonitoring ? 'Stopped Monitoring' : 'Started Monitoring');
+    // Logic to start/stop monitoring can be added here
   };
 
   return (
@@ -80,13 +43,17 @@ const LiveMonitoring = () => {
           {/* Port Input */}
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Port:</label>
-            <input
-              type="number"
+            <select
               value={port}
-              onChange={(e) => setPort(Number(e.target.value))}
-              className="w-20 px-2 py-1 border rounded-md text-center"
-              placeholder="Port"
-            />
+              onChange={(e) => setPort(e.target.value)}
+              className="w-40 px-2 py-1 border rounded-md text-center"
+            >
+              {availablePorts.map((p) => (
+                <option key={p.path} value={p.path}>
+                  {p.path} ({p.manufacturer})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -114,10 +81,9 @@ const LiveMonitoring = () => {
 
           <button
             onClick={toggleMonitoring}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto justify-center ${isMonitoring
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-green-500 hover:bg-green-600'
-              } text-white`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto justify-center ${
+              isMonitoring ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
+            } text-white`}
           >
             {isMonitoring ? (
               <>
