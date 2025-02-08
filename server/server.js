@@ -18,115 +18,159 @@ const io = new Server(httpServer, {
   }
 });
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  next();
-});
+app.use(express.json());
 
 const csvFilePath = join(__dirname, 'data/data.csv');
-const csvWriter = createObjectCsvWriter({
-  path: csvFilePath,
-  header: [
-    { id: 'timestamp', title: 'TIMESTAMP' },
-    { id: 'originalData', title: 'ORIGINAL_DATA' },
-    { id: 'multipliedData', title: 'MULTIPLIED_DATA' },
-    { id: 'dividedData', title: 'DIVIDED_DATA' }
-  ]
-});
 
 if (!fs.existsSync(csvFilePath)) {
-  fs.writeFileSync(csvFilePath, 'TIMESTAMP,ORIGINAL_DATA,MULTIPLIED_DATA,DIVIDED_DATA\n');
+  fs.writeFileSync(csvFilePath, 'TIMESTAMP,ORIGINAL_DATA,SOURCE\n');
 }
 
 let isGeneratingData = false;
 let arduinoPort = null;
-let multiplyFactor = 2;
-let divideFactor = 2;
+let clientsConnected = 0;
 
-app.post('/update-factors', express.json(), (req, res) => {
-  const { multiply, divide } = req.body;
-  if (multiply) multiplyFactor = parseFloat(multiply);
-  if (divide) divideFactor = parseFloat(divide);
-  res.json({ multiplyFactor, divideFactor });
-});
+const writeToCsv = (dataPoint) => {
+  const csvWriter = createObjectCsvWriter({
+    path: csvFilePath,
+    append: true,
+    header: [
+      { id: 'timestamp', title: 'TIMESTAMP' },
+      { id: 'originalData', title: 'ORIGINAL_DATA' },
+      { id: 'source', title: 'SOURCE' }
+    ]
+  });
 
-app.get('/historical-data', (req, res) => {
-  const results = [];
-  fs.createReadStream(csvFilePath)
-    .pipe(csv())
-    .on('data', (data) => {
-      results.push({
-        timestamp: parseInt(data.TIMESTAMP),
-        originalData: parseFloat(data.ORIGINAL_DATA),
-        multipliedData: parseFloat(data.MULTIPLIED_DATA),
-        dividedData: parseFloat(data.DIVIDED_DATA)
-      });
-    })
-    .on('end', () => {
-      res.json(results);
-    })
-    .on('error', (error) => {
-      res.status(500).json({ error: 'Failed To Read Historical Data.' });
-    });
-});
+  csvWriter.writeRecords([dataPoint]).catch(err => console.error("CSV Write Error :", err));
+};
 
-const processAndEmitData = (originalData) => {
+const processAndEmitData = (originalData, source) => {
   const timestamp = Date.now();
-  const multipliedData = originalData * multiplyFactor;
-  const dividedData = originalData / divideFactor;
-
-  const dataPoint = {
-    timestamp,
-    originalData,
-    multipliedData,
-    dividedData
-  };
-
+  const dataPoint = { timestamp, originalData, source };
   io.emit('medicalData', dataPoint);
-  csvWriter.writeRecords([dataPoint]);
+  writeToCsv(dataPoint);
 };
 
 const generateSimulatedData = () => {
   if (!isGeneratingData) return;
-
-  const baseHeartRate = 75;
-  const variation = Math.random() * 10 - 5;
-  const simulatedHeartRate = baseHeartRate + variation;
-  
-  processAndEmitData(simulatedHeartRate);
+  const simulatedData = 75 + Math.random() * 10 - 5;
+  processAndEmitData(simulatedData, 'simulation');
   setTimeout(generateSimulatedData, 1000);
 };
 
-const connectToArduino = () => {
-  SerialPort.list().then(ports => {
-    const arduinoPort = ports.find(port => port.manufacturer?.includes('Arduino'));
-    if (arduinoPort) {
-      const port = new SerialPort({
-        path: arduinoPort.path,
-        baudRate: 9600
+const connectToArduino = async () => {
+  try {
+    const ports = await SerialPort.list();
+    const portInfo = ports.find(port => port.manufacturer?.includes('Arduino'));
+
+    if (portInfo) {
+      arduinoPort = new SerialPort({ path: portInfo.path, baudRate: 9600 });
+
+      arduinoPort.on('data', (data) => {
+        const value = parseFloat(data.toString().trim());
+        if (!isNaN(value)) processAndEmitData(value, 'arduino');
       });
-      port.on('data', (data) => {
-        const value = parseFloat(data.toString());
-        if (!isNaN(value)) {
-          processAndEmitData(value);
-        }
+
+      arduinoPort.on('error', (err) => {
+        console.error('Arduino Error :', err);
+        arduinoPort = null;
       });
+
+      console.log(`Connected To Arduino On ${portInfo.path}`);
     } else {
       console.log('No Arduino Found, Using Simulated Data.');
     }
-  }).catch(err => {
-    console.log('Error Connecting To Arduino, Using Simulated Data.');
-  });
+  } catch (error) {
+    console.error("Error Connecting To Arduino :", error);
+  }
 };
+
+const applyFunction = (data, operation, value) => {
+  switch (operation) {
+    case 'multiply': return data * value;
+    case 'divide': return data / value;
+    case 'add': return data + value;
+    case 'subtract': return data - value;
+    default: return data;
+  }
+};
+
+app.get('/api/ports', async (req, res) => {
+  try {
+    const ports = await SerialPort.list();
+    res.json(ports.map(port => ({ path: port.path, manufacturer: port.manufacturer })));
+  } catch {
+    res.status(500).json({ error: 'Failed To Retrieve Ports.' });
+  }
+});
+
+app.post('/api/start', (req, res) => {
+  isGeneratingData = true;
+  generateSimulatedData();
+  res.json({ message: 'Data Streaming Started.' });
+});
+
+app.post('/api/stop', (req, res) => {
+  isGeneratingData = false;
+  res.json({ message: 'Data Streaming Stopped.' });
+});
+
+app.get('/api/status', (req, res) => {
+  res.json({ monitoring: isGeneratingData });
+});
+
+app.get('/api/offline', (req, res) => {
+  const results = [];
+  fs.createReadStream(csvFilePath)
+    .pipe(csv())
+    .on('data', (data) => results.push({
+      timestamp: parseInt(data.TIMESTAMP),
+      originalData: parseFloat(data.ORIGINAL_DATA),
+      source: data.SOURCE
+    }))
+    .on('end', () => res.json(results))
+    .on('error', () => res.status(500).json({ error: 'Failed To Read Data.' }));
+});
+
+app.get('/api/offline/:operation/:value', (req, res) => {
+  const { operation, value } = req.params;
+  const factor = parseFloat(value);
+
+  if (isNaN(factor) || !['multiply', 'divide', 'add', 'subtract'].includes(operation)) {
+    return res.status(400).json({ error: 'Invalid Operation Or Factor.' });
+  }
+
+  const results = [];
+  fs.createReadStream(csvFilePath)
+    .pipe(csv())
+    .on('data', (data) => results.push({
+      timestamp: parseInt(data.TIMESTAMP),
+      originalData: parseFloat(data.ORIGINAL_DATA),
+      modifiedData: applyFunction(parseFloat(data.ORIGINAL_DATA), operation, factor),
+      source: data.SOURCE
+    }))
+    .on('end', () => res.json(results))
+    .on('error', () => res.status(500).json({ error: 'Failed To Read Data.' }));
+});
+
+app.delete('/api/offline', (req, res) => {
+  try {
+    fs.writeFileSync(csvFilePath, 'TIMESTAMP,ORIGINAL_DATA,SOURCE\n');
+    res.json({ message: 'Offline data cleared' });
+  } catch {
+    res.status(500).json({ error: 'Failed To Clear Data.' });
+  }
+});
 
 io.on('connection', (socket) => {
   console.log('Client Connected.');
+  clientsConnected++;
 
   socket.on('startMonitoring', () => {
-    isGeneratingData = true;
-    generateSimulatedData();
+    if (!isGeneratingData) {
+      isGeneratingData = true;
+      generateSimulatedData();
+    }
   });
 
   socket.on('stopMonitoring', () => {
@@ -134,6 +178,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    clientsConnected--;
     console.log('Client Disconnected.');
   });
 });
