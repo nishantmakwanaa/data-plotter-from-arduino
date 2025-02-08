@@ -67,38 +67,39 @@ const LiveMonitoring = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Medical Monitoring</h1>
-        <div className="flex items-center space-x-4">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">Medical Monitoring</h1>
+        <div className="flex flex-col md:flex-row items-center space-y-2 md:space-x-4 md:space-y-0">
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Multiply By :</label>
+            <label className="text-sm font-medium text-gray-700">Multiply By:</label>
             <input
               type="number"
               value={multiplyFactor}
               onChange={(e) => setMultiplyFactor(Number(e.target.value))}
               onBlur={updateFactors}
-              className="w-20 px-2 py-1 border rounded"
+              className="w-20 px-2 py-1 border rounded-md text-center"
               placeholder="Multiply"
             />
           </div>
           <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Divide By:</label>
             <input
               type="number"
               value={divideFactor}
               onChange={(e) => setDivideFactor(Number(e.target.value))}
               onBlur={updateFactors}
-              className="w-20 px-2 py-1 border rounded"
+              className="w-20 px-2 py-1 border rounded-md text-center"
               placeholder="Divide"
             />
           </div>
           <button
             onClick={toggleMonitoring}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+            className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto justify-center ${
               isMonitoring 
                 ? 'bg-red-500 hover:bg-red-600' 
                 : 'bg-green-500 hover:bg-green-600'
-            } text-white transition-colors`}
+            } text-white`}
           >
             {isMonitoring ? (
               <>
@@ -115,95 +116,37 @@ const LiveMonitoring = () => {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold mb-4">Original Signal</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
-            <YAxis domain={['auto', 'auto']} />
-            <Tooltip />
-            <Legend />
-            <Brush dataKey="time" height={30} stroke="#8884d8" />
-            <Line 
-              type="monotone" 
-              dataKey="originalData" 
-              stroke="#2563eb" 
-              name="Heart Rate"
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold mb-4">Processed Signals</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
-            <YAxis domain={['auto', 'auto']} />
-            <Tooltip />
-            <Legend />
-            <Brush dataKey="time" height={30} stroke="#8884d8" />
-            <Line 
-              type="monotone" 
-              dataKey="multipliedData" 
-              stroke="#16a34a" 
-              name={`Multiplied (×${multiplyFactor})`}
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="dividedData" 
-              stroke="#dc2626" 
-              name={`Divided (÷${divideFactor})`}
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold mb-4">Signal Relationships</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
-            <YAxis domain={['auto', 'auto']} />
-            <Tooltip />
-            <Legend />
-            <Brush dataKey="time" height={30} stroke="#8884d8" />
-            <Line 
-              type="monotone" 
-              dataKey="originalData" 
-              stroke="#2563eb" 
-              name="Original"
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="multipliedData" 
-              stroke="#16a34a" 
-              name={`Multiplied (×${multiplyFactor})`}
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="dividedData" 
-              stroke="#dc2626" 
-              name={`Divided (÷${divideFactor})`}
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {["Original Signal", "Processed Signals", "Signal Relationships"].map((title, index) => (
+        <div key={index} className="bg-white p-4 rounded-lg shadow-md w-full overflow-hidden">
+          <h2 className="text-lg font-semibold mb-4">{title}</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="time" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" />
+              <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Brush dataKey="time" height={20} stroke="#8884d8" />
+              {index === 0 && (
+                <Line type="monotone" dataKey="originalData" stroke="#2563eb" name="Heart Rate" dot={false} isAnimationActive={false} />
+              )}
+              {index === 1 && (
+                <>
+                  <Line type="monotone" dataKey="multipliedData" stroke="#16a34a" name={`Multiplied (×${multiplyFactor})`} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="dividedData" stroke="#dc2626" name={`Divided (÷${divideFactor})`} dot={false} isAnimationActive={false} />
+                </>
+              )}
+              {index === 2 && (
+                <>
+                  <Line type="monotone" dataKey="originalData" stroke="#2563eb" name="Original" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="multipliedData" stroke="#16a34a" name={`Multiplied (×${multiplyFactor})`} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="dividedData" stroke="#dc2626" name={`Divided (÷${divideFactor})`} dot={false} isAnimationActive={false} />
+                </>
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ))}
     </div>
   );
 };
