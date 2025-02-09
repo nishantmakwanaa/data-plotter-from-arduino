@@ -22,16 +22,16 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     value: point.value
   }));
 
-  const getAxisYDomain = (from: string, to: string, ref: string) => {
+  const getAxisYDomain = (from: string, to: string) => {
     const refData = formattedData.slice(
       formattedData.findIndex(d => d.timestamp === from),
       formattedData.findIndex(d => d.timestamp === to) + 1
     );
 
-    let [bottom, top] = [refData[0][ref], refData[0][ref]];
+    let [bottom, top] = [refData[0].value, refData[0].value];
     refData.forEach(d => {
-      if (d[ref] > top) top = d[ref];
-      if (d[ref] < bottom) bottom = d[ref];
+      if (d.value > top) top = d.value;
+      if (d.value < bottom) bottom = d.value;
     });
 
     return [(bottom | 0) - 10, (top | 0) + 10];
@@ -44,7 +44,7 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
       return;
     }
 
-    let [newBottom, newTop] = getAxisYDomain(refAreaLeft, refAreaRight, 'value');
+    const [newBottom, newTop] = getAxisYDomain(refAreaLeft, refAreaRight);
 
     setRefAreaLeft('');
     setRefAreaRight('');

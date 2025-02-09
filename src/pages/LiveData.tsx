@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { DataPoint, Operation, ProcessedData, PortConfig, Theme } from '../types';
+import { useState, useEffect } from 'react';
+import { Operation, ProcessedData, PortConfig, Theme } from '../types';
 import Graph from '../components/Graph';
 import Controls from '../components/Controls';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 
 const PORTS: PortConfig[] = [
-  { id: 'localhost', name: 'Localhost', type: 'localhost' },
+  { id: 'localhost', name: 'LocalHost', type: 'localhost' },
   { id: 'arduino', name: 'Arduino', type: 'arduino' },
-  { id: 'raspberry', name: 'Raspberry Pi', type: 'raspberry' },
+  { id: 'raspberry', name: 'Rasp-Berry Pi', type: 'raspberry' },
 ];
 
 const MAX_POINTS = 100;
@@ -26,65 +26,53 @@ function LiveData({ theme }: LiveDataProps) {
     processed: [],
     relation: [],
   });
-
-  const processData = useCallback((value: number) => {
-    switch (operation) {
-      case 'add':
-        return value + operationValue;
-      case 'subtract':
-        return value - operationValue;
-      case 'multiply':
-        return value * operationValue;
-      case 'divide':
-        return operationValue !== 0 ? value / operationValue : value;
-      default:
-        return value;
-    }
-  }, [operation, operationValue]);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io('http://localhost:3000');
+    const newSocket = io('http://localhost:3000');
+    setSocket(newSocket);
 
-    socket.on('data', (newValue: number) => {
-      if (isRunning) {
-        const timestamp = Date.now();
-        const processedValue = processData(newValue);
+    newSocket.on('data', (newData: { timestamp: number; original: number; processed: number; relation: number }) => {
+      setData(prev => ({
+        original: [...prev.original, { timestamp: newData.timestamp, value: newData.original }].slice(-MAX_POINTS),
+        processed: [...prev.processed, { timestamp: newData.timestamp, value: newData.processed }].slice(-MAX_POINTS),
+        relation: [...prev.relation, { timestamp: newData.timestamp, value: newData.relation }].slice(-MAX_POINTS),
+      }));
+    });
 
-        setData(prev => {
-          const original = [...prev.original, { timestamp, value: newValue }].slice(-MAX_POINTS);
-          const processed = [...prev.processed, { timestamp, value: processedValue }].slice(-MAX_POINTS);
-          const relation = [...prev.relation, { timestamp, value: processedValue - newValue }].slice(-MAX_POINTS);
-          return { original, processed, relation };
-        });
-      }
+    newSocket.on('csvSaved', ({ filename }) => {
+      console.log(`Data Saved To : ${filename}`);
+    });
+
+    newSocket.on('error', ({ message }) => {
+      console.error('Server Error :', message);
     });
 
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
     };
-  }, [isRunning, processData]);
+  }, []);
 
   const handleStart = () => {
-    setIsRunning(true);
+    if (socket) {
+      socket.emit('start', {
+        portType: selectedPort,
+        portPath: selectedPort,
+        operation,
+        operationValue
+      });
+      setIsRunning(true);
+    }
   };
 
   const handleStop = () => {
-    setIsRunning(false);
-    // Auto-export CSV when stopping
-    const csv = [
-      ['Timestamp,Original,Processed,Relation'],
-      ...data.original.map((point, i) => 
-        `${point.timestamp},${point.value},${data.processed[i]?.value},${data.relation[i]?.value}`
-      )
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `medical_data_${new Date().toISOString()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (socket) {
+      socket.emit('stop', {
+        portType: selectedPort,
+        portPath: selectedPort
+      });
+      setIsRunning(false);
+    }
   };
 
   return (

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DataPoint, ProcessedData, Theme } from '../types';
+import { ProcessedData, Theme } from '../types';
 import Graph from '../components/Graph';
 
 interface CsvDataProps {
@@ -20,7 +20,7 @@ function CsvData({ theme }: CsvDataProps) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const lines = text.split('\n').slice(1); // Skip header
+      const lines = text.split('\n').slice(1);
       const importedData: ProcessedData = {
         original: [],
         processed: [],

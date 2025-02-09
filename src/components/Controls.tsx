@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Square, Moon, Sun } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 import { Operation, PortConfig, Theme } from '../types';
 
 interface ControlsProps {
@@ -33,7 +33,9 @@ const Controls: React.FC<ControlsProps> = ({
     <div className={`flex flex-wrap gap-4 p-4 rounded-lg shadow-lg ${
       theme.isDark ? 'bg-gray-800' : 'bg-white'
     }`}>
+      <label htmlFor="port-select" className="sr-only">Select Port</label>
       <select
+        id="port-select"
         className={`px-4 py-2 border rounded-lg ${
           theme.isDark
             ? 'bg-gray-700 border-gray-600 text-white'
@@ -49,7 +51,9 @@ const Controls: React.FC<ControlsProps> = ({
         ))}
       </select>
 
+      <label htmlFor="operation-select" className="sr-only">Select Operation</label>
       <select
+        id="operation-select"
         className={`px-4 py-2 border rounded-lg ${
           theme.isDark
             ? 'bg-gray-700 border-gray-600 text-white'
@@ -95,17 +99,6 @@ const Controls: React.FC<ControlsProps> = ({
         )}
       </button>
 
-      <button
-        className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-          theme.isDark
-            ? 'bg-gray-700 hover:bg-gray-600'
-            : 'bg-gray-200 hover:bg-gray-300'
-        } text-inherit`}
-        onClick={theme.toggle}
-      >
-        {theme.isDark ? <Sun size={16} /> : <Moon size={16} />}
-        {theme.isDark ? 'Light Mode' : 'Dark Mode'}
-      </button>
     </div>
   );
 };

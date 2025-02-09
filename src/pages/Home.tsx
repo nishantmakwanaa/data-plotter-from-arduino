@@ -9,15 +9,15 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ theme }) => {
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen space-y-8 flex items-center justify-center">
       <div className={`p-8 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>
         <h1 className={`text-3xl font-bold mb-4 ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>
-          Welcome to Medical Data Visualization
+          Welcome To Medical Data Visualization
         </h1>
         <p className={`text-lg mb-8 ${theme.isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-          Real-time medical data visualization tool with support for multiple data sources and advanced analysis features.
+          Real-Time Medical Data Visualization Tool With Support For Multiple Data Sources And Advanced Analysis Features.
         </p>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <Link
             to="/live"
@@ -32,7 +32,7 @@ const Home: React.FC<HomeProps> = ({ theme }) => {
               </h2>
             </div>
             <p className={theme.isDark ? 'text-gray-300' : 'text-gray-600'}>
-              Connect to various data sources including Arduino, Raspberry Pi, or use simulated localhost data for real-time visualization and analysis.
+              Connect To Various Data Sources Including Arduino, Raspberry Pi, Or Use Simulated Localhost Data For Real-Time Visualization And Analysis.
             </p>
           </Link>
 
@@ -49,7 +49,7 @@ const Home: React.FC<HomeProps> = ({ theme }) => {
               </h2>
             </div>
             <p className={theme.isDark ? 'text-gray-300' : 'text-gray-600'}>
-              Upload and analyze previously recorded data from CSV files with our comprehensive visualization tools.
+              Upload And Analyze Previously Recorded Data From CSV Files With Our Comprehensive Visualization Tools.
             </p>
           </Link>
         </div>
