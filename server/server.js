@@ -6,6 +6,7 @@ import { ReadlineParser } from '@serialport/parser-readline';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs/promises';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const dataDir = join(__dirname, 'data');
@@ -51,18 +52,85 @@ async function saveDataToCSV(sessionId, data) {
   }
 }
 
+async function checkPortStatus(portPath) {
+  try {
+    const port = new SerialPort({
+      path: portPath,
+      baudRate: 9600,
+      autoOpen: false
+    });
+    
+    return new Promise((resolve) => {
+      port.open((err) => {
+        if (err) {
+          resolve('offline');
+        } else {
+          port.close();
+          resolve('online');
+        }
+      });
+    });
+  } catch (err) {
+    return 'offline';
+  }
+}
+
 async function listSerialPorts() {
   try {
     const ports = await SerialPort.list();
-    return ports.map(port => ({
-      path: port.path,
-      manufacturer: port.manufacturer
+    const portsWithStatus = await Promise.all(ports.map(async (port) => {
+      const status = await checkPortStatus(port.path);
+      return {
+        id: port.path,
+        name: port.path,
+        type: port.manufacturer || 'Unknown',
+        status: status
+      };
     }));
+
+    portsWithStatus.push({
+      id: 'localhost',
+      name: 'Localhost',
+      type: 'Virtual',
+      status: 'online'
+    });
+
+    portsWithStatus.push({
+      id: 'raspberry',
+      name: 'Raspberry Pi',
+      type: 'Virtual',
+      status: 'online'
+    });
+
+    return portsWithStatus;
   } catch (err) {
     console.error('Error Listing Serial Ports :', err);
-    return [];
+    return [{
+      id: 'localhost',
+      name: 'Localhost',
+      type: 'Virtual',
+      status: 'online'
+    }];
   }
 }
+
+let lastPortList = [];
+
+async function updatePorts() {
+  try {
+    const ports = await listSerialPorts();
+    const currentPorts = JSON.stringify(ports);
+
+    if (currentPorts !== JSON.stringify(lastPortList)) {
+      lastPortList = ports;
+      io.emit('ports', ports);
+    }
+  } catch (err) {
+    console.error('Error Updating Serial Ports :', err);
+  }
+}
+
+setInterval(updatePorts, 5000);
 
 function connectArduino(portPath) {
   const port = new SerialPort({
@@ -79,7 +147,7 @@ function generateLocalhostData() {
 }
 
 io.on('connection', async (socket) => {
-  console.log('Client connected');
+  console.log('Client Connected.');
   const sessionId = socket.id;
   sessionData.set(sessionId, []);
   
@@ -159,7 +227,7 @@ io.on('connection', async (socket) => {
           break;
       }
     } catch (err) {
-      console.error('Error tarting Data Collection :', err);
+      console.error('Error Starting Data Collection :', err);
       socket.emit('error', { message: 'Failed To Start Data Collection.' });
     }
   });

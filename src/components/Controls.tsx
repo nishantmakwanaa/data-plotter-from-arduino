@@ -1,13 +1,18 @@
 import React from 'react';
-import { Play, Square } from 'lucide-react';
-import { Operation, PortConfig, Theme } from '../types';
+import { Play, Square, Wifi, WifiOff } from 'lucide-react';
+import { Operation, Theme } from '../types';
+
+interface ServerPort {
+  path: string;
+  manufacturer: string | null;
+}
 
 interface ControlsProps {
   isRunning: boolean;
   selectedPort: string;
   operation: Operation;
   operationValue: number;
-  ports: PortConfig[];
+  ports: ServerPort[];
   theme: Theme;
   onStart: () => void;
   onStop: () => void;
@@ -29,6 +34,32 @@ const Controls: React.FC<ControlsProps> = ({
   onOperationChange,
   onOperationValueChange,
 }) => {
+  const transformedPorts = [
+    ...ports.map(port => ({
+      id: port.path,
+      name: port.path,
+      type: port.manufacturer || 'Unknown',
+      status: 'online' as const
+    })),
+    {
+      id: 'localhost',
+      name: 'Local Simulation',
+      type: 'Virtual',
+      status: 'online' as const
+    },
+    {
+      id: 'raspberry',
+      name: 'Raspberry Pi',
+      type: 'Virtual',
+      status: 'online' as const
+    }
+  ];
+
+  const groupedPorts = {
+    online: transformedPorts,
+    offline: []
+  };
+
   return (
     <div className={`flex flex-wrap justify-center gap-4 p-4 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>
       <div className="flex flex-wrap justify-center gap-4 w-full md:flex-nowrap">
@@ -39,12 +70,26 @@ const Controls: React.FC<ControlsProps> = ({
           value={selectedPort}
           onChange={(e) => onPortChange(e.target.value)}
         >
-          {ports.map((port) => (
-            <option key={port.id} value={port.id}>
-              {port.name} ({port.type})
-            </option>
-          ))}
+          <option value="">Select a port</option>
+          
+          {groupedPorts.online.length > 0 && (
+            <optgroup label="Available Ports">
+              {groupedPorts.online.map((port) => (
+                <option key={port.id} value={port.id} className="flex items-center">
+                  {port.name} ({port.type})
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
+
+        <div className="flex items-center gap-2">
+          {selectedPort ? (
+            <Wifi className="text-green-500" size={20} />
+          ) : (
+            <WifiOff className="text-red-500" size={20} />
+          )}
+        </div>
 
         <label htmlFor="operation-select" className="sr-only">Select Operation</label>
         <select
@@ -70,8 +115,11 @@ const Controls: React.FC<ControlsProps> = ({
       
       <div className="flex flex-col md:flex-row justify-center gap-4 w-full">
         <button
-          className={`px-6 py-3 rounded-lg flex items-center gap-2 text-lg font-medium min-w-[120px] flex-grow ${isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white`}
+          className={`px-6 py-3 rounded-lg flex items-center gap-2 text-lg font-medium min-w-[120px] flex-grow 
+            ${isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white
+            ${!selectedPort ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={isRunning ? onStop : onStart}
+          disabled={!selectedPort}
         >
           {isRunning ? (
             <>
