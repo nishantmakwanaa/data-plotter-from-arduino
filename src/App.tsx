@@ -1,25 +1,28 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import LiveMonitoring from './pages/LiveMonitoring';
-import HistoricalData from './pages/HistoricalData';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
 import Home from './pages/Home';
+import LiveData from './pages/LiveData';
+import CsvData from './pages/CsvData';
+import { Theme } from './types';
 
 function App() {
+  const [isDark, setIsDark] = useState(false);
+  const theme: Theme = {
+    isDark,
+    toggle: () => setIsDark(!isDark),
+  };
+
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen bg-gray-50">
-        <Header />
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/live" element={<LiveMonitoring />} />
-            <Route path="/historical" element={<HistoricalData />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+    <BrowserRouter>
+      <Layout theme={theme}>
+        <Routes>
+          <Route path="/" element={<Home theme={theme} />} />
+          <Route path="/live" element={<LiveData theme={theme} />} />
+          <Route path="/csv" element={<CsvData theme={theme} />} />
+        </Routes>
+      </Layout>
+    </BrowserRouter>
   );
 }
 

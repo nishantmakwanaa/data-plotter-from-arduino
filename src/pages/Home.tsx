@@ -1,32 +1,58 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
+import { Activity, FileSpreadsheet } from 'lucide-react';
+import { Theme } from '../types';
 
-const Home = () => {
+interface HomeProps {
+  theme: Theme;
+}
+
+const Home: React.FC<HomeProps> = ({ theme }) => {
   return (
-    <div 
-      className="h-screen flex flex-col items-center justify-center px-6 bg-cover bg-center space-y-8 home-background"
-    >
-      <h1 className="text-5xl font-bold text-black text-center drop-shadow-lg">
-        Welcome To Our Medical Data Analytics Platform
-      </h1>
-      <p className="text-lg text-black text-center max-w-2xl drop-shadow-md">
-        Monitor and analyze patient data effectively.
-      </p>
+    <div className="space-y-8">
+      <div className={`p-8 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>
+        <h1 className={`text-3xl font-bold mb-4 ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>
+          Welcome to Medical Data Visualization
+        </h1>
+        <p className={`text-lg mb-8 ${theme.isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+          Real-time medical data visualization tool with support for multiple data sources and advanced analysis features.
+        </p>
+        
+        <div className="grid md:grid-cols-2 gap-6">
+          <Link
+            to="/live"
+            className={`p-6 rounded-lg transition-transform transform hover:scale-105 ${
+              theme.isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <Activity size={24} className={theme.isDark ? 'text-blue-400' : 'text-blue-600'} />
+              <h2 className={`text-xl font-semibold ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>
+                Live Data Visualization
+              </h2>
+            </div>
+            <p className={theme.isDark ? 'text-gray-300' : 'text-gray-600'}>
+              Connect to various data sources including Arduino, Raspberry Pi, or use simulated localhost data for real-time visualization and analysis.
+            </p>
+          </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-lg">
-      <Link 
-          to="/live" 
-          className="bg-green-600 text-white text-2xl font-semibold p-6 rounded-xl shadow-lg text-center 
-          hover:bg-green-700 transform hover:scale-105 transition-all duration-300"
-        >
-          Live Monitoring
-        </Link>
-        <Link 
-          to="/historical" 
-          className="bg-blue-600 text-white text-2xl font-semibold p-6 rounded-xl shadow-lg text-center 
-          hover:bg-blue-700 transform hover:scale-105 transition-all duration-300"
-        >
-          Historical Data
-        </Link>
+          <Link
+            to="/csv"
+            className={`p-6 rounded-lg transition-transform transform hover:scale-105 ${
+              theme.isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <FileSpreadsheet size={24} className={theme.isDark ? 'text-green-400' : 'text-green-600'} />
+              <h2 className={`text-xl font-semibold ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>
+                CSV Data Analysis
+              </h2>
+            </div>
+            <p className={theme.isDark ? 'text-gray-300' : 'text-gray-600'}>
+              Upload and analyze previously recorded data from CSV files with our comprehensive visualization tools.
+            </p>
+          </Link>
+        </div>
       </div>
     </div>
   );
