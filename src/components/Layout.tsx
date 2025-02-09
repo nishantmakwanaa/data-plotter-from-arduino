@@ -16,7 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children, theme }) => {
     <div className={`min-h-screen ${theme.isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <header className={`${theme.isDark ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <h1 className={`text-2xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>Medico</h1>
+          <h1 className={`text-2xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>MedicoTracker</h1>
           
           <div className="flex items-center gap-4 md:hidden">
             <button className="p-2" onClick={theme.toggle}>
@@ -101,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({ children, theme }) => {
       <footer className={`${theme.isDark ? 'bg-gray-800' : 'bg-white'} mt-auto`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-center">
           <p className={theme.isDark ? 'text-gray-400' : 'text-gray-600'}>
-           Medico © 2025 - All Rights Reserved.
+          MedicoTracker © 2025 - All Rights Reserved.
           </p>
         </div>
       </footer>

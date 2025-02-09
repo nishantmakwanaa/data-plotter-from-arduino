@@ -12,7 +12,7 @@ const Home: React.FC<HomeProps> = ({ theme }) => {
     <div className="min-h-screen space-y-8 flex items-center justify-center">
       <div className={`p-8 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>
         <h1 className={`text-3xl font-bold mb-4 ${theme.isDark ? 'text-white' : 'text-gray-800'}`}>
-          Welcome To Medical Data Visualization
+          Welcome To MedicoTracker
         </h1>
         <p className={`text-lg mb-8 ${theme.isDark ? 'text-gray-300' : 'text-gray-600'}`}>
           Real-Time Medical Data Visualization Tool With Support For Multiple Data Sources And Advanced Analysis Features.
