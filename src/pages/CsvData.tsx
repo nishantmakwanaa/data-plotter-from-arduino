@@ -42,28 +42,36 @@ function CsvData({ theme }: CsvDataProps) {
     reader.readAsText(file);
   };
 
-  return (
-    <div className="space-y-8">
-      <div className={`p-4 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>
-        <label className="flex items-center justify-center w-full">
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <span className={`px-4 py-2 rounded-lg cursor-pointer ${
-            theme.isDark
-              ? 'bg-gray-700 text-white hover:bg-gray-600'
-              : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-          }`}>
-            Upload CSV File
-          </span>
-        </label>
-      </div>
+  const handleRemoveData = () => {
+    setData({
+      original: [],
+      processed: [],
+      relation: [],
+    });
+  };
 
-      {data.original.length > 0 && (
-        <div className="space-y-8">
+  return (
+    <div className="max-w-7xl mx-auto min-h-screen flex flex-col items-center justify-center space-y-12 p-8">
+      {!data.original.length ? (
+        <div className="p-8 rounded-lg shadow-lg text-center w-96">
+          <label className="flex flex-col items-center justify-center w-full">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <span className={`px-6 py-3 text-lg font-semibold rounded-lg cursor-pointer ${
+              theme.isDark
+                ? 'bg-gray-700 text-white hover:bg-gray-600'
+                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+            }`}>
+              Upload CSV File
+            </span>
+          </label>
+        </div>
+      ) : (
+        <div className="space-y-12 w-full">
           <Graph
             data={data.original}
             title="Original Data"
@@ -82,6 +90,15 @@ function CsvData({ theme }: CsvDataProps) {
             color="#9333ea"
             isDark={theme.isDark}
           />
+
+          <div className="flex justify-center">
+            <button
+              onClick={handleRemoveData}
+              className="px-6 py-3 text-lg font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              Remove CSV Data
+            </button>
+          </div>
         </div>
       )}
     </div>
