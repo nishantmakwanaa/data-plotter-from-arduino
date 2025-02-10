@@ -115,7 +115,7 @@ async function listSerialPorts() {
     const virtualPorts = [
       {
         id: 'localhost',
-        name: 'Localhost Simulation',
+        name: 'LocalHost Simulation',
         type: 'Virtual',
         status: 'online'
       }
@@ -143,7 +143,7 @@ async function listSerialPorts() {
     console.error('Error Listing Serial Ports :', err);
     return [{
       id: 'localhost',
-      name: 'Localhost Simulation',
+      name: 'LocalHost Simulation',
       type: 'Virtual',
       status: 'online'
     }];
@@ -195,7 +195,7 @@ function generateLocalhostData() {
 }
 
 io.on('connection', async (socket) => {
-  console.log('Client Connected:', socket.id);
+  console.log('Client Connected :', socket.id);
   const sessionId = socket.id;
   sessionData.set(sessionId, []);
   
@@ -348,7 +348,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Client Disconnected :', socket.id);
+    console.log('Client DisConnected :', socket.id);
     if (dataInterval) {
       clearInterval(dataInterval);
     }

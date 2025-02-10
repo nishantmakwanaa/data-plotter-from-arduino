@@ -50,7 +50,7 @@ const Controls: React.FC<ControlsProps> = ({
           value={selectedPort}
           onChange={(e) => onPortChange(e.target.value)}
         >
-          <option value="">Select a port</option>
+          <option value="">Select A Port</option>
           
           {groupedPorts.online.length > 0 && (
             <optgroup label="Available Ports">
