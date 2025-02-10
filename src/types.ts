@@ -1,3 +1,9 @@
+export interface Theme {
+  isDark: boolean;
+}
+
+export type Operation = 'add' | 'subtract' | 'multiply' | 'divide';
+
 export interface DataPoint {
   timestamp: number;
   value: number;
@@ -9,15 +15,12 @@ export interface ProcessedData {
   relation: DataPoint[];
 }
 
-export type Operation = 'add' | 'subtract' | 'multiply' | 'divide';
-
-export interface PortConfig {
+export interface Port {
   id: string;
   name: string;
-  type: 'arduino' | 'raspberry' | 'localhost';
-}
-
-export interface Theme {
-  isDark: boolean;
-  toggle: () => void;
+  type: string;
+  status: 'online' | 'offline' | 'error';
+  vendorId?: string;
+  productId?: string;
+  serialNumber?: string;
 }

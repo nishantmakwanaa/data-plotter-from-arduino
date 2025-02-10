@@ -1,18 +1,13 @@
 import React from 'react';
 import { Play, Square, Wifi, WifiOff } from 'lucide-react';
-import { Operation, Theme } from '../types';
-
-interface ServerPort {
-  path: string;
-  manufacturer: string | null;
-}
+import { Operation, Theme, Port } from '../types';
 
 interface ControlsProps {
   isRunning: boolean;
   selectedPort: string;
   operation: Operation;
   operationValue: number;
-  ports: ServerPort[];
+  ports: Port[];
   theme: Theme;
   onStart: () => void;
   onStop: () => void;
@@ -34,31 +29,14 @@ const Controls: React.FC<ControlsProps> = ({
   onOperationChange,
   onOperationValueChange,
 }) => {
-  const transformedPorts = [
-    ...ports.map(port => ({
-      id: port.path,
-      name: port.path,
-      type: port.manufacturer || 'Unknown',
-      status: 'online' as const
-    })),
-    {
-      id: 'localhost',
-      name: 'Local Simulation',
-      type: 'Virtual',
-      status: 'online' as const
-    },
-    {
-      id: 'raspberry',
-      name: 'Raspberry Pi',
-      type: 'Virtual',
-      status: 'online' as const
-    }
-  ];
 
-  const groupedPorts = {
-    online: transformedPorts,
-    offline: []
-  };
+  const groupedPorts = ports.reduce(
+    (acc, port) => {
+      acc[port.status].push(port);
+      return acc;
+    },
+    { online: [] as Port[], offline: [] as Port[], error: [] as Port[] }
+  );
 
   return (
     <div className={`flex flex-wrap justify-center gap-4 p-4 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>
@@ -66,7 +44,9 @@ const Controls: React.FC<ControlsProps> = ({
         <label htmlFor="port-select" className="sr-only">Select Port</label>
         <select
           id="port-select"
-          className={`px-4 py-2 border rounded-lg w-full md:w-auto ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'}`}
+          className={`px-4 py-2 border rounded-lg w-full md:w-auto ${
+            theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'
+          }`}
           value={selectedPort}
           onChange={(e) => onPortChange(e.target.value)}
         >
@@ -75,8 +55,28 @@ const Controls: React.FC<ControlsProps> = ({
           {groupedPorts.online.length > 0 && (
             <optgroup label="Available Ports">
               {groupedPorts.online.map((port) => (
-                <option key={port.id} value={port.id} className="flex items-center">
+                <option key={port.id} value={port.id}>
                   {port.name} ({port.type})
+                </option>
+              ))}
+            </optgroup>
+          )}
+
+          {groupedPorts.offline.length > 0 && (
+            <optgroup label="Offline Ports">
+              {groupedPorts.offline.map((port) => (
+                <option key={port.id} value={port.id} disabled>
+                  {port.name} ({port.type}) - Offline
+                </option>
+              ))}
+            </optgroup>
+          )}
+
+          {groupedPorts.error.length > 0 && (
+            <optgroup label="Error Ports">
+              {groupedPorts.error.map((port) => (
+                <option key={port.id} value={port.id} disabled>
+                  {port.name} ({port.type}) - Error
                 </option>
               ))}
             </optgroup>
@@ -94,7 +94,9 @@ const Controls: React.FC<ControlsProps> = ({
         <label htmlFor="operation-select" className="sr-only">Select Operation</label>
         <select
           id="operation-select"
-          className={`px-4 py-2 border rounded-lg w-full md:w-auto ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'}`}
+          className={`px-4 py-2 border rounded-lg w-full md:w-auto ${
+            theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'
+          }`}
           value={operation}
           onChange={(e) => onOperationChange(e.target.value as Operation)}
         >
@@ -106,7 +108,9 @@ const Controls: React.FC<ControlsProps> = ({
 
         <input
           type="number"
-          className={`px-4 py-2 border rounded-lg w-full md:w-auto ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'}`}
+          className={`px-4 py-2 border rounded-lg w-full md:w-auto ${
+            theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'
+          }`}
           value={operationValue}
           onChange={(e) => onOperationValueChange(Number(e.target.value))}
           placeholder="Operation Value"

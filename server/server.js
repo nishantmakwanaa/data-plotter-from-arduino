@@ -31,6 +31,7 @@ app.use('/data', express.static('data'));
 
 const activeConnections = new Map();
 const sessionData = new Map();
+const portStatusCache = new Map();
 
 async function saveDataToCSV(sessionId, data) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -53,6 +54,12 @@ async function saveDataToCSV(sessionId, data) {
 }
 
 async function checkPortStatus(portPath) {
+
+  const cachedStatus = portStatusCache.get(portPath);
+  if (cachedStatus && (Date.now() - cachedStatus.timestamp) < 2000) {
+    return cachedStatus.status;
+  }
+
   try {
     const port = new SerialPort({
       path: portPath,
@@ -60,16 +67,30 @@ async function checkPortStatus(portPath) {
       autoOpen: false
     });
     
-    return new Promise((resolve) => {
+    const status = await new Promise((resolve) => {
       port.open((err) => {
         if (err) {
           resolve('offline');
         } else {
-          port.close();
-          resolve('online');
+
+          port.write('\x00', (err) => {
+            if (err) {
+              resolve('error');
+            } else {
+              resolve('online');
+            }
+            port.close();
+          });
         }
       });
     });
+
+    portStatusCache.set(portPath, {
+      status,
+      timestamp: Date.now()
+    });
+
+    return status;
   } catch (err) {
     return 'offline';
   }
@@ -82,32 +103,47 @@ async function listSerialPorts() {
       const status = await checkPortStatus(port.path);
       return {
         id: port.path,
-        name: port.path,
+        name: port.friendlyName || port.path,
         type: port.manufacturer || 'Unknown',
-        status: status
+        status: status,
+        vendorId: port.vendorId,
+        productId: port.productId,
+        serialNumber: port.serialNumber
       };
     }));
 
-    portsWithStatus.push({
-      id: 'localhost',
-      name: 'Localhost',
-      type: 'Virtual',
-      status: 'online'
-    });
+    const virtualPorts = [
+      {
+        id: 'localhost',
+        name: 'Localhost Simulation',
+        type: 'Virtual',
+        status: 'online'
+      }
+    ];
 
-    portsWithStatus.push({
-      id: 'raspberry',
-      name: 'Raspberry Pi',
-      type: 'Virtual',
-      status: 'online'
-    });
+    try {
+      const isRaspberryPi = await fs.access('/dev/ttyAMA0')
+        .then(() => true)
+        .catch(() => false);
 
-    return portsWithStatus;
+      if (isRaspberryPi) {
+        virtualPorts.push({
+          id: '/dev/ttyAMA0',
+          name: 'Raspberry Pi GPIO UART',
+          type: 'Hardware',
+          status: 'online'
+        });
+      }
+    } catch (err) {
+      console.log('Not running on Raspberry Pi');
+    }
+
+    return [...portsWithStatus, ...virtualPorts];
   } catch (err) {
     console.error('Error Listing Serial Ports :', err);
     return [{
       id: 'localhost',
-      name: 'Localhost',
+      name: 'Localhost Simulation',
       type: 'Virtual',
       status: 'online'
     }];
@@ -130,14 +166,26 @@ async function updatePorts() {
   }
 }
 
-setInterval(updatePorts, 5000);
+setInterval(updatePorts, 2000);
 
 function connectArduino(portPath) {
   const port = new SerialPort({
     path: portPath,
     baudRate: 9600
   });
+
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+  port.on('error', (err) => {
+    console.error('Serial Port Error :', err);
+    io.emit('portError', { port: portPath, error: err.message });
+  });
+
+  port.on('close', () => {
+    console.log('Port Closed :', portPath);
+    io.emit('portDisconnected', { port: portPath });
+  });
+
   return { port, parser };
 }
 
@@ -147,7 +195,7 @@ function generateLocalhostData() {
 }
 
 io.on('connection', async (socket) => {
-  console.log('Client Connected.');
+  console.log('Client Connected:', socket.id);
   const sessionId = socket.id;
   sessionData.set(sessionId, []);
   
@@ -205,18 +253,56 @@ io.on('connection', async (socket) => {
         case 'arduino':
           if (activeConnections.has(portPath)) {
             const { parser } = activeConnections.get(portPath);
-            parser.on('data', (data) => emitData(parseFloat(data)));
+            parser.on('data', (data) => {
+              try {
+                const value = parseFloat(data);
+                if (!isNaN(value)) {
+                  emitData(value);
+                }
+              } catch (err) {
+                console.error('Error Parsing Arduino Data :', err);
+              }
+            });
           } else {
             const connection = connectArduino(portPath);
             activeConnections.set(portPath, connection);
-            connection.parser.on('data', (data) => emitData(parseFloat(data)));
+            connection.parser.on('data', (data) => {
+              try {
+                const value = parseFloat(data);
+                if (!isNaN(value)) {
+                  emitData(value);
+                }
+              } catch (err) {
+                console.error('Error Parsing Arduino Data :', err);
+              }
+            });
           }
           break;
 
         case 'raspberry':
-          dataInterval = setInterval(() => {
-            emitData(Math.random() * 100);
-          }, 1000);
+          try {
+
+            const Serial = (await import('raspi-serial')).default;
+            const serial = new Serial();
+            serial.open(() => {
+              console.log('Raspberry Pi UART Opened.');
+              serial.on('data', (data) => {
+                try {
+                  const value = parseFloat(data);
+                  if (!isNaN(value)) {
+                    emitData(value);
+                  }
+                } catch (err) {
+                  console.error('Error Parsing Raspberry Pi Data :', err);
+                }
+              });
+            });
+          } catch (err) {
+            console.log('Falling Back To Simulated Rasp-Berry Pi Data.');
+            dataInterval = setInterval(() => {
+              emitData(Math.random() * 100);
+            }, 1000);
+          }
           break;
 
         case 'localhost':
@@ -228,7 +314,7 @@ io.on('connection', async (socket) => {
       }
     } catch (err) {
       console.error('Error Starting Data Collection :', err);
-      socket.emit('error', { message: 'Failed To Start Data Collection.' });
+      socket.emit('error', { message: 'Failed To Start Data Collection : ' + err.message });
     }
   });
 
@@ -240,6 +326,12 @@ io.on('connection', async (socket) => {
     if (portType === 'arduino' && activeConnections.has(portPath)) {
       const connection = activeConnections.get(portPath);
       connection.parser.removeAllListeners('data');
+      connection.port.close((err) => {
+        if (err) {
+          console.error('Error Closing Port :', err);
+        }
+      });
+      activeConnections.delete(portPath);
     }
 
     try {
@@ -251,15 +343,26 @@ io.on('connection', async (socket) => {
       }
     } catch (err) {
       console.error('Error Saving Session Data :', err);
-      socket.emit('error', { message: 'Failed To Save Session Data.' });
+      socket.emit('error', { message: 'Failed To Save Session Data : ' + err.message });
     }
   });
 
   socket.on('disconnect', () => {
-    console.log('Client Disconnected.');
+    console.log('Client Disconnected :', socket.id);
     if (dataInterval) {
       clearInterval(dataInterval);
     }
+
+    for (const [portPath, connection] of activeConnections.entries()) {
+      connection.parser.removeAllListeners('data');
+      connection.port.close((err) => {
+        if (err) {
+          console.error('Error Closing Port On Disconnect:', err);
+        }
+      });
+      activeConnections.delete(portPath);
+    }
+
     sessionData.delete(sessionId);
   });
 });
