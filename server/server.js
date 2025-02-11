@@ -14,7 +14,7 @@ const dataDir = join(__dirname, 'generated_data');
 try {
   await fs.mkdir(dataDir, { recursive: true });
 } catch (err) {
-  console.error('Error Creating Data Directory :', err);
+  console.error('Error Creating Data Directory:', err);
 }
 
 const app = express();
@@ -31,150 +31,51 @@ app.use('/data', express.static('data'));
 
 const activeConnections = new Map();
 const sessionData = new Map();
-const portStatusCache = new Map();
-const virtualIntervals = new Map();
 
-function generateVirtualData() {
-  const baseHeartRate = 75;
-  const baseOxygenSat = 98;
-  const time = Date.now() / 1000;
-  const heartRateVariation = Math.sin(time) * 5 + Math.random() * 2;
-  const oxygenSatVariation = Math.sin(time * 0.5) * 1 + Math.random() * 0.5;
-
-  return {
-    heartRate: baseHeartRate + heartRateVariation,
-    oxygenSat: Math.min(100, baseOxygenSat + oxygenSatVariation)
-  };
-}
-
-async function saveDataToCSV(sessionId, data) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `medical_data_${sessionId}_${timestamp}.csv`;
-  const filepath = join(dataDir, filename);
-  
-  const csvContent = [
-    'Timestamp,Heart Rate,Oxygen Saturation,Relation',
-    ...data.map(d => `${d.timestamp},${d.original},${d.processed},${d.relation}`)
-  ].join('\n');
-
+function parseArduinoData(data) {
   try {
-    await fs.writeFile(filepath, csvContent);
-    console.log(`Data Saved To ${filepath}`);
-    return filename;
-  } catch (err) {
-    console.error('Error Saving CSV :', err);
-    throw err;
-  }
-}
-
-async function checkPortStatus(portPath) {
-  if (portPath === 'virtual') return 'online';
-
-  if (activeConnections.has(portPath)) {
-    return 'online';
-  }
-
-  try {
-    const port = new SerialPort({
-      path: portPath,
-      baudRate: 9600,
-      autoOpen: false
-    });
+    // Parse the comma-separated values from Arduino
+    const values = data.trim().split(',');
+    const result = {};
     
-    return new Promise((resolve) => {
-      port.open((err) => {
-        if (err) {
-          console.log(`Port ${portPath} Check Failed :`, err.message);
-          resolve('offline');
-          return;
-        }
-        
-        resolve('online');
-        port.close((err) => {
-          if (err) console.error(`Error Closing Port ${portPath}:`, err);
-        });
-      });
+    values.forEach(item => {
+      const [key, value] = item.split(':').map(s => s.trim());
+      result[key] = parseFloat(value);
     });
-  } catch (err) {
-    console.error(`Error Checking Port ${portPath}:`, err);
-    return 'offline';
-  }
-}
 
-async function listSerialPorts() {
-  try {
-    const ports = await SerialPort.list();
-    const portsWithStatus = await Promise.all(ports.map(async (port) => {
-      const status = await checkPortStatus(port.path);
-      return {
-        id: port.path,
-        name: port.friendlyName || port.path,
-        type: port.manufacturer?.includes('Arduino') ? 'Arduino' : 'Unknown',
-        status: status,
-        baudRate: 9600
-      };
-    }));
-
-    const virtualPort = {
-      id: 'virtual',
-      name: 'Virtual Medical Monitor',
-      type: 'Virtual',
-      status: 'online',
-      baudRate: 9600
+    return {
+      'streamline-1': result['Y1'] || 0,
+      'streamline-2': result['Y2'] || 0,
+      'streamline-3': result['Y3'] || 0,
+      'streamline-4': result['Y4'] || 0
     };
-
-    return [virtualPort, ...portsWithStatus];
   } catch (err) {
-    console.error('Error Listing Serial Ports :', err);
-    return [{
-      id: 'virtual',
-      name: 'Virtual Medical Monitor',
-      type: 'Virtual',
-      status: 'online',
-      baudRate: 9600
-    }];
+    console.error('Error parsing Arduino data:', err);
+    return null;
   }
 }
 
-let lastPortList = [];
-
-async function updatePorts() {
-  try {
-    const ports = await listSerialPorts();
-    const currentPorts = JSON.stringify(ports);
-
-    if (currentPorts !== JSON.stringify(lastPortList)) {
-      lastPortList = ports;
-      io.emit('ports', ports);
-    }
-  } catch (err) {
-    console.error('Error Updating Serial Ports :', err);
-  }
-}
-
-setInterval(updatePorts, 1000);
-
-function connectArduino(portPath) {
-  console.log(`Attempting To Connect To Arduino On ${portPath}`);
+async function connectArduino(portPath) {
+  console.log(`Attempting to connect to Arduino on ${portPath}`);
   
   const port = new SerialPort({
     path: portPath,
-    baudRate: 9600
+    baudRate: 19200 // Match Arduino baud rate
   });
 
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
   port.on('open', () => {
-    console.log(`Successfully Opened Port ${portPath}`);
+    console.log(`Successfully opened port ${portPath}`);
   });
 
   port.on('error', (err) => {
-    console.error(`Serial Port Error On ${portPath}:`, err);
+    console.error(`Serial port error on ${portPath}:`, err);
     io.emit('portError', { port: portPath, error: err.message });
   });
 
   port.on('close', () => {
-    console.log(`Port Closed : ${portPath}`);
+    console.log(`Port closed: ${portPath}`);
     io.emit('portDisconnected', { port: portPath });
     activeConnections.delete(portPath);
   });
@@ -183,133 +84,83 @@ function connectArduino(portPath) {
 }
 
 io.on('connection', async (socket) => {
-  console.log('Client Connected :', socket.id);
+  console.log('Client connected:', socket.id);
   const sessionId = socket.id;
-  sessionData.set(sessionId, []);
-  
-  const ports = await listSerialPorts();
-  socket.emit('ports', ports);
+  sessionData.set(sessionId, {
+    startTime: Date.now(),
+    data: []
+  });
 
-  socket.on('start', async ({ portPath, baudRate = 9600 }) => {
-    console.log(`Starting Connection To ${portPath} With BaudRate ${baudRate}`);
+  socket.on('start', async ({ portPath }) => {
+    console.log(`Starting connection to ${portPath}`);
     
     try {
-      if (portPath === 'virtual') {
-        const interval = setInterval(() => {
-          const { heartRate, oxygenSat } = generateVirtualData();
-          const timestamp = Date.now();
-          const relationValue = (heartRate + oxygenSat) / 2;
-
-          const dataPoint = {
-            timestamp,
-            original: heartRate,
-            processed: oxygenSat,
-            relation: relationValue
-          };
-
-          const sessionDataArray = sessionData.get(sessionId);
-          if (sessionDataArray) {
-            sessionDataArray.push(dataPoint);
-            socket.emit('data', dataPoint);
-          }
-        }, 1000);
-
-        virtualIntervals.set(sessionId, interval);
-        socket.emit('status', { connected: true, port: portPath });
-        return;
-      }
-
       let connection;
       if (!activeConnections.has(portPath)) {
         connection = connectArduino(portPath);
         activeConnections.set(portPath, connection);
-        console.log(`New Connection Established To ${portPath}`);
+        console.log(`New connection established to ${portPath}`);
       } else {
         connection = activeConnections.get(portPath);
-        console.log(`Using Existing Connection To ${portPath}`);
+        console.log(`Using existing connection to ${portPath}`);
       }
+
+      const session = sessionData.get(sessionId);
+      session.startTime = Date.now();
 
       connection.parser.on('data', (data) => {
         try {
-          const [heartRate, oxygenSat] = data.trim().split(',').map(Number);
-          if (!isNaN(heartRate) && !isNaN(oxygenSat)) {
-            const timestamp = Date.now();
-            const relationValue = (heartRate + oxygenSat) / 2;
-
+          const parsedData = parseArduinoData(data);
+          if (parsedData) {
+            const currentTime = Date.now();
+            const seconds = (currentTime - session.startTime) / 1000;
+            
             const dataPoint = {
-              timestamp,
-              original: heartRate,
-              processed: oxygenSat,
-              relation: relationValue
+              timestamp: currentTime,
+              seconds: Math.round(seconds * 100) / 100, // Round to 2 decimal places
+              ...parsedData
             };
 
-            const sessionDataArray = sessionData.get(sessionId);
-            if (sessionDataArray) {
-              sessionDataArray.push(dataPoint);
-              socket.emit('data', dataPoint);
-            }
+            session.data.push(dataPoint);
+            socket.emit('data', dataPoint);
           }
         } catch (err) {
-          console.error('Error Parsing Arduino Data :', err);
+          console.error('Error processing Arduino data:', err);
         }
       });
 
       socket.emit('status', { connected: true, port: portPath });
     } catch (err) {
-      console.error('Error Starting Data Collection :', err);
-      socket.emit('error', { message: 'Failed To Start Data Collection : ' + err.message });
+      console.error('Error starting data collection:', err);
+      socket.emit('error', { message: 'Failed to start data collection: ' + err.message });
     }
   });
 
   socket.on('stop', async ({ portPath }) => {
     console.log(`Stopping connection to ${portPath}`);
     
-    if (portPath === 'virtual') {
-      const interval = virtualIntervals.get(sessionId);
-      if (interval) {
-        clearInterval(interval);
-        virtualIntervals.delete(sessionId);
-      }
-    } else if (activeConnections.has(portPath)) {
+    if (activeConnections.has(portPath)) {
       const connection = activeConnections.get(portPath);
       connection.parser.removeAllListeners('data');
       connection.port.close((err) => {
         if (err) {
-          console.error('Error Closing Port :', err);
+          console.error('Error closing port:', err);
         }
       });
       activeConnections.delete(portPath);
-    }
-
-    try {
-      const sessionDataArray = sessionData.get(sessionId);
-      if (sessionDataArray && sessionDataArray.length > 0) {
-        const filename = await saveDataToCSV(sessionId, sessionDataArray);
-        socket.emit('csvSaved', { filename });
-        sessionDataArray.length = 0;
-      }
-    } catch (err) {
-      console.error('Error Saving Session Data:', err);
-      socket.emit('error', { message: 'Failed To Save Session Data : ' + err.message });
     }
 
     socket.emit('status', { connected: false, port: portPath });
   });
 
   socket.on('disconnect', () => {
-    console.log('Client Disconnected :', socket.id);
-
-    const interval = virtualIntervals.get(sessionId);
-    if (interval) {
-      clearInterval(interval);
-      virtualIntervals.delete(sessionId);
-    }
+    console.log('Client disconnected:', socket.id);
 
     for (const [portPath, connection] of activeConnections.entries()) {
       connection.parser.removeAllListeners('data');
       connection.port.close((err) => {
         if (err) {
-          console.error('Error Closing Port On Disconnect :', err);
+          console.error('Error closing port on disconnect:', err);
         }
       });
       activeConnections.delete(portPath);
@@ -321,5 +172,5 @@ io.on('connection', async (socket) => {
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server Running On Port : ${PORT}`);
+  console.log(`Server running on port: ${PORT}`);
 });
