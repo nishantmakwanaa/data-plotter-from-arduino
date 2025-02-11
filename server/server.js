@@ -14,14 +14,14 @@ const dataDir = join(__dirname, 'data');
 try {
   await fs.mkdir(dataDir, { recursive: true });
 } catch (err) {
-  console.error('Error Creating Data Directory :', err);
+  console.error('Error Creating Data Directory:', err);
 }
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5174",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"]
   }
 });
@@ -32,6 +32,21 @@ app.use('/data', express.static('data'));
 const activeConnections = new Map();
 const sessionData = new Map();
 const portStatusCache = new Map();
+const virtualIntervals = new Map();
+
+// Simulated vital signs generator
+function generateVirtualData() {
+  const baseHeartRate = 75;
+  const baseOxygenSat = 98;
+  const time = Date.now() / 1000;
+  const heartRateVariation = Math.sin(time) * 5 + Math.random() * 2;
+  const oxygenSatVariation = Math.sin(time * 0.5) * 1 + Math.random() * 0.5;
+
+  return {
+    heartRate: baseHeartRate + heartRateVariation,
+    oxygenSat: Math.min(100, baseOxygenSat + oxygenSatVariation)
+  };
+}
 
 async function saveDataToCSV(sessionId, data) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -39,7 +54,7 @@ async function saveDataToCSV(sessionId, data) {
   const filepath = join(dataDir, filename);
   
   const csvContent = [
-    'Timestamp,Original,Processed,Relation',
+    'Timestamp,Heart Rate,Oxygen Saturation,Relation',
     ...data.map(d => `${d.timestamp},${d.original},${d.processed},${d.relation}`)
   ].join('\n');
 
@@ -48,16 +63,17 @@ async function saveDataToCSV(sessionId, data) {
     console.log(`Data Saved To ${filepath}`);
     return filename;
   } catch (err) {
-    console.error('Error Saving CSV :', err);
+    console.error('Error Saving CSV:', err);
     throw err;
   }
 }
 
 async function checkPortStatus(portPath) {
+  if (portPath === 'virtual') return 'online';
 
-  const cachedStatus = portStatusCache.get(portPath);
-  if (cachedStatus && (Date.now() - cachedStatus.timestamp) < 2000) {
-    return cachedStatus.status;
+  // For active connections, always return online
+  if (activeConnections.has(portPath)) {
+    return 'online';
   }
 
   try {
@@ -67,31 +83,23 @@ async function checkPortStatus(portPath) {
       autoOpen: false
     });
     
-    const status = await new Promise((resolve) => {
+    return new Promise((resolve) => {
       port.open((err) => {
         if (err) {
+          console.log(`Port ${portPath} check failed:`, err.message);
           resolve('offline');
-        } else {
-
-          port.write('\x00', (err) => {
-            if (err) {
-              resolve('error');
-            } else {
-              resolve('online');
-            }
-            port.close();
-          });
+          return;
         }
+        
+        // If we can open the port, it's available
+        resolve('online');
+        port.close((err) => {
+          if (err) console.error(`Error closing port ${portPath}:`, err);
+        });
       });
     });
-
-    portStatusCache.set(portPath, {
-      status,
-      timestamp: Date.now()
-    });
-
-    return status;
   } catch (err) {
+    console.error(`Error checking port ${portPath}:`, err);
     return 'offline';
   }
 }
@@ -104,48 +112,30 @@ async function listSerialPorts() {
       return {
         id: port.path,
         name: port.friendlyName || port.path,
-        type: port.manufacturer || 'Unknown',
+        type: port.manufacturer?.includes('Arduino') ? 'Arduino' : 'Unknown',
         status: status,
-        vendorId: port.vendorId,
-        productId: port.productId,
-        serialNumber: port.serialNumber
+        baudRate: 9600
       };
     }));
 
-    const virtualPorts = [
-      {
-        id: 'localhost',
-        name: 'LocalHost Simulation',
-        type: 'Virtual',
-        status: 'online'
-      }
-    ];
-
-    try {
-      const isRaspberryPi = await fs.access('/dev/ttyAMA0')
-        .then(() => true)
-        .catch(() => false);
-
-      if (isRaspberryPi) {
-        virtualPorts.push({
-          id: '/dev/ttyAMA0',
-          name: 'Raspberry Pi GPIO UART',
-          type: 'Hardware',
-          status: 'online'
-        });
-      }
-    } catch (err) {
-      console.log('Not running on Raspberry Pi');
-    }
-
-    return [...portsWithStatus, ...virtualPorts];
-  } catch (err) {
-    console.error('Error Listing Serial Ports :', err);
-    return [{
-      id: 'localhost',
-      name: 'LocalHost Simulation',
+    // Add virtual port
+    const virtualPort = {
+      id: 'virtual',
+      name: 'Virtual Medical Monitor',
       type: 'Virtual',
-      status: 'online'
+      status: 'online',
+      baudRate: 9600
+    };
+
+    return [virtualPort, ...portsWithStatus];
+  } catch (err) {
+    console.error('Error Listing Serial Ports:', err);
+    return [{
+      id: 'virtual',
+      name: 'Virtual Medical Monitor',
+      type: 'Virtual',
+      status: 'online',
+      baudRate: 9600
     }];
   }
 }
@@ -162,13 +152,16 @@ async function updatePorts() {
       io.emit('ports', ports);
     }
   } catch (err) {
-    console.error('Error Updating Serial Ports :', err);
+    console.error('Error Updating Serial Ports:', err);
   }
 }
 
-setInterval(updatePorts, 2000);
+// Update ports more frequently
+setInterval(updatePorts, 1000);
 
 function connectArduino(portPath) {
+  console.log(`Attempting to connect to Arduino on ${portPath}`);
+  
   const port = new SerialPort({
     path: portPath,
     baudRate: 9600
@@ -176,159 +169,118 @@ function connectArduino(portPath) {
 
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
+  port.on('open', () => {
+    console.log(`Successfully opened port ${portPath}`);
+  });
+
   port.on('error', (err) => {
-    console.error('Serial Port Error :', err);
+    console.error(`Serial Port Error on ${portPath}:`, err);
     io.emit('portError', { port: portPath, error: err.message });
   });
 
   port.on('close', () => {
-    console.log('Port Closed :', portPath);
+    console.log(`Port Closed: ${portPath}`);
     io.emit('portDisconnected', { port: portPath });
+    activeConnections.delete(portPath);
   });
 
   return { port, parser };
 }
 
-function generateLocalhostData() {
-  const timestamp = Date.now();
-  return Math.sin(timestamp / 1000) * 50 + 50;
-}
-
 io.on('connection', async (socket) => {
-  console.log('Client Connected :', socket.id);
+  console.log('Client Connected:', socket.id);
   const sessionId = socket.id;
   sessionData.set(sessionId, []);
   
   const ports = await listSerialPorts();
   socket.emit('ports', ports);
 
-  let dataInterval;
-
-  socket.on('start', async ({ portType, portPath, operation, operationValue }) => {
-    if (dataInterval) {
-      clearInterval(dataInterval);
-    }
-
+  socket.on('start', async ({ portPath, baudRate = 9600 }) => {
+    console.log(`Starting connection to ${portPath} with baudRate ${baudRate}`);
+    
     try {
-      const emitData = (originalValue) => {
-        const timestamp = Date.now();
-        let processedValue;
-        
-        switch (operation) {
-          case 'add':
-            processedValue = originalValue + operationValue;
-            break;
-          case 'subtract':
-            processedValue = originalValue - operationValue;
-            break;
-          case 'multiply':
-            processedValue = originalValue * operationValue;
-            break;
-          case 'divide':
-            processedValue = operationValue !== 0 ? originalValue / operationValue : originalValue;
-            break;
-          default:
-            processedValue = originalValue;
-        }
+      if (portPath === 'virtual') {
+        const interval = setInterval(() => {
+          const { heartRate, oxygenSat } = generateVirtualData();
+          const timestamp = Date.now();
+          const relationValue = (heartRate + oxygenSat) / 2;
 
-        const relationValue = processedValue - originalValue;
-        
-        const sessionDataArray = sessionData.get(sessionId);
-        sessionDataArray.push({
-          timestamp,
-          original: originalValue,
-          processed: processedValue,
-          relation: relationValue
-        });
+          const dataPoint = {
+            timestamp,
+            original: heartRate,
+            processed: oxygenSat,
+            relation: relationValue
+          };
 
-        socket.emit('data', {
-          timestamp,
-          original: originalValue,
-          processed: processedValue,
-          relation: relationValue
-        });
-      };
-
-      switch (portType) {
-        case 'arduino':
-          if (activeConnections.has(portPath)) {
-            const { parser } = activeConnections.get(portPath);
-            parser.on('data', (data) => {
-              try {
-                const value = parseFloat(data);
-                if (!isNaN(value)) {
-                  emitData(value);
-                }
-              } catch (err) {
-                console.error('Error Parsing Arduino Data :', err);
-              }
-            });
-          } else {
-            const connection = connectArduino(portPath);
-            activeConnections.set(portPath, connection);
-            connection.parser.on('data', (data) => {
-              try {
-                const value = parseFloat(data);
-                if (!isNaN(value)) {
-                  emitData(value);
-                }
-              } catch (err) {
-                console.error('Error Parsing Arduino Data :', err);
-              }
-            });
+          const sessionDataArray = sessionData.get(sessionId);
+          if (sessionDataArray) {
+            sessionDataArray.push(dataPoint);
+            socket.emit('data', dataPoint);
           }
-          break;
+        }, 1000);
 
-        case 'raspberry':
-          try {
-
-            const Serial = (await import('raspi-serial')).default;
-            const serial = new Serial();
-            serial.open(() => {
-              console.log('Raspberry Pi UART Opened.');
-              serial.on('data', (data) => {
-                try {
-                  const value = parseFloat(data);
-                  if (!isNaN(value)) {
-                    emitData(value);
-                  }
-                } catch (err) {
-                  console.error('Error Parsing Raspberry Pi Data :', err);
-                }
-              });
-            });
-          } catch (err) {
-            console.log('Falling Back To Simulated Rasp-Berry Pi Data.');
-            dataInterval = setInterval(() => {
-              emitData(Math.random() * 100);
-            }, 1000);
-          }
-          break;
-
-        case 'localhost':
-        default:
-          dataInterval = setInterval(() => {
-            emitData(generateLocalhostData());
-          }, 1000);
-          break;
+        virtualIntervals.set(sessionId, interval);
+        socket.emit('status', { connected: true, port: portPath });
+        return;
       }
+
+      let connection;
+      if (!activeConnections.has(portPath)) {
+        connection = connectArduino(portPath);
+        activeConnections.set(portPath, connection);
+        console.log(`New connection established to ${portPath}`);
+      } else {
+        connection = activeConnections.get(portPath);
+        console.log(`Using existing connection to ${portPath}`);
+      }
+
+      connection.parser.on('data', (data) => {
+        try {
+          const [heartRate, oxygenSat] = data.trim().split(',').map(Number);
+          if (!isNaN(heartRate) && !isNaN(oxygenSat)) {
+            const timestamp = Date.now();
+            const relationValue = (heartRate + oxygenSat) / 2;
+
+            const dataPoint = {
+              timestamp,
+              original: heartRate,
+              processed: oxygenSat,
+              relation: relationValue
+            };
+
+            const sessionDataArray = sessionData.get(sessionId);
+            if (sessionDataArray) {
+              sessionDataArray.push(dataPoint);
+              socket.emit('data', dataPoint);
+            }
+          }
+        } catch (err) {
+          console.error('Error Parsing Arduino Data:', err);
+        }
+      });
+
+      socket.emit('status', { connected: true, port: portPath });
     } catch (err) {
-      console.error('Error Starting Data Collection :', err);
-      socket.emit('error', { message: 'Failed To Start Data Collection : ' + err.message });
+      console.error('Error Starting Data Collection:', err);
+      socket.emit('error', { message: 'Failed to start data collection: ' + err.message });
     }
   });
 
-  socket.on('stop', async ({ portType, portPath }) => {
-    if (dataInterval) {
-      clearInterval(dataInterval);
-    }
-
-    if (portType === 'arduino' && activeConnections.has(portPath)) {
+  socket.on('stop', async ({ portPath }) => {
+    console.log(`Stopping connection to ${portPath}`);
+    
+    if (portPath === 'virtual') {
+      const interval = virtualIntervals.get(sessionId);
+      if (interval) {
+        clearInterval(interval);
+        virtualIntervals.delete(sessionId);
+      }
+    } else if (activeConnections.has(portPath)) {
       const connection = activeConnections.get(portPath);
       connection.parser.removeAllListeners('data');
       connection.port.close((err) => {
         if (err) {
-          console.error('Error Closing Port :', err);
+          console.error('Error Closing Port:', err);
         }
       });
       activeConnections.delete(portPath);
@@ -342,15 +294,20 @@ io.on('connection', async (socket) => {
         sessionDataArray.length = 0;
       }
     } catch (err) {
-      console.error('Error Saving Session Data :', err);
-      socket.emit('error', { message: 'Failed To Save Session Data : ' + err.message });
+      console.error('Error Saving Session Data:', err);
+      socket.emit('error', { message: 'Failed to save session data: ' + err.message });
     }
+
+    socket.emit('status', { connected: false, port: portPath });
   });
 
   socket.on('disconnect', () => {
-    console.log('Client DisConnected :', socket.id);
-    if (dataInterval) {
-      clearInterval(dataInterval);
+    console.log('Client Disconnected:', socket.id);
+
+    const interval = virtualIntervals.get(sessionId);
+    if (interval) {
+      clearInterval(interval);
+      virtualIntervals.delete(sessionId);
     }
 
     for (const [portPath, connection] of activeConnections.entries()) {
@@ -369,5 +326,5 @@ io.on('connection', async (socket) => {
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server Running On Port : ${PORT}`);
+  console.log(`Server Running On Port: ${PORT}`);
 });
