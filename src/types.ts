@@ -1,5 +1,6 @@
 export interface Theme {
   isDark: boolean;
+  toggle: () => void;
 }
 
 export type Operation = 'add' | 'subtract' | 'multiply' | 'divide';

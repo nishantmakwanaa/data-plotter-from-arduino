@@ -19,7 +19,7 @@ class SerialPortManager {
         baudRate: 9600
       }));
     } catch (error) {
-      console.error('Error listing ports:', error);
+      console.error('Error Listing Ports :', error);
       return [];
     }
   }
@@ -79,7 +79,7 @@ class SerialPortManager {
             });
           }
         } catch (error) {
-          console.error('Error parsing data:', error);
+          console.error('Error Parsing Data :', error);
         }
       };
       

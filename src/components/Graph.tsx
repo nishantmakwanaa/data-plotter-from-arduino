@@ -61,56 +61,44 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     }
   }, [formattedData, autoScroll, left, right]);
 
-  const getAxisYDomain = useCallback((from: string, to: string) => {
-    const refData = formattedData.slice(
-      formattedData.findIndex(d => d.timestamp === from),
-      formattedData.findIndex(d => d.timestamp === to) + 1
-    );
-
-    if (refData.length === 0) return [0, 100];
-
-    let [bottom, top] = [refData[0].value, refData[0].value];
-    refData.forEach(d => {
-      if (d.value > top) top = d.value;
-      if (d.value < bottom) bottom = d.value;
+  const getAxisYDomain = useCallback((from: number, to: number, offset = 0.1) => {
+    const dataInRange = formattedData.slice(from, to + 1);
+    let [min, max] = [Infinity, -Infinity];
+    
+    dataInRange.forEach(item => {
+      if (item.value < min) min = item.value;
+      if (item.value > max) max = item.value;
     });
 
-    const padding = (top - bottom) * 0.1;
-    return [bottom - padding, top + padding];
+    const padding = (max - min) * offset;
+    return [min - padding, max + padding];
   }, [formattedData]);
 
   const handleMouseWheel = useCallback((e: WheelEvent) => {
-    if (!containerRef.current || !isZooming) return;
+    if (!isZooming || formattedData.length === 0) return;
     e.preventDefault();
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const xPercent = x / rect.width;
+    const dataLength = formattedData.length;
+    const currentLeftIndex = left ? formattedData.findIndex(d => d.timestamp === left) : 0;
+    const currentRightIndex = right ? formattedData.findIndex(d => d.timestamp === right) : dataLength - 1;
+    
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1; // Reversed for intuitive zoom
+    const range = currentRightIndex - currentLeftIndex;
+    const newRange = Math.max(10, Math.min(dataLength, Math.round(range / zoomFactor)));
+    
+    const centerIndex = Math.floor((currentLeftIndex + currentRightIndex) / 2);
+    const halfRange = Math.floor(newRange / 2);
+    
+    const newLeftIndex = Math.max(0, centerIndex - halfRange);
+    const newRightIndex = Math.min(dataLength - 1, centerIndex + halfRange);
 
-    const currentViewData = formattedData.filter(d => {
-      const index = formattedData.findIndex(item => item.timestamp === d.timestamp);
-      return (!left || index >= formattedData.findIndex(item => item.timestamp === left)) &&
-             (!right || index <= formattedData.findIndex(item => item.timestamp === right));
-    });
-
-    if (currentViewData.length < 2) return;
-
-    const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
-    const centerIndex = Math.floor(currentViewData.length * xPercent);
-    const center = currentViewData[centerIndex]?.timestamp;
-
-    if (!center) return;
-
-    const newLeftIndex = Math.max(0, Math.floor(centerIndex - (centerIndex * zoomFactor)));
-    const newRightIndex = Math.min(currentViewData.length - 1, Math.ceil(centerIndex + ((currentViewData.length - centerIndex) * zoomFactor)));
-
-    const newLeft = currentViewData[newLeftIndex]?.timestamp;
-    const newRight = currentViewData[newRightIndex]?.timestamp;
+    const newLeft = formattedData[newLeftIndex]?.timestamp;
+    const newRight = formattedData[newRightIndex]?.timestamp;
 
     if (newLeft && newRight) {
       setLeft(newLeft);
       setRight(newRight);
-      const [newBottom, newTop] = getAxisYDomain(newLeft, newRight);
+      const [newBottom, newTop] = getAxisYDomain(newLeftIndex, newRightIndex);
       setBottom(newBottom);
       setTop(newTop);
       setAutoScroll(false);
@@ -118,26 +106,22 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
   }, [isZooming, left, right, formattedData, getAxisYDomain]);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
-    if (!containerRef.current || !isPanning) return;
+    if (!isPanning || !containerRef.current) return;
     setStartX(e.clientX);
   }, [isPanning]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!containerRef.current || !isPanning || !startX) return;
+    if (!isPanning || !startX || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const deltaX = (e.clientX - startX) / rect.width;
-    const currentViewData = formattedData.filter(d => {
-      const index = formattedData.findIndex(item => item.timestamp === d.timestamp);
-      return (!left || index >= formattedData.findIndex(item => item.timestamp === left)) &&
-             (!right || index <= formattedData.findIndex(item => item.timestamp === right));
-    });
-
-    const shift = Math.floor(currentViewData.length * deltaX);
+    
+    const leftIndex = left ? formattedData.findIndex(d => d.timestamp === left) : 0;
+    const rightIndex = right ? formattedData.findIndex(d => d.timestamp === right) : formattedData.length - 1;
+    const range = rightIndex - leftIndex;
+    
+    const shift = Math.round(range * deltaX);
     if (Math.abs(shift) < 1) return;
-
-    const leftIndex = formattedData.findIndex(d => d.timestamp === left);
-    const rightIndex = formattedData.findIndex(d => d.timestamp === right);
 
     const newLeftIndex = Math.max(0, leftIndex - shift);
     const newRightIndex = Math.min(formattedData.length - 1, rightIndex - shift);
@@ -178,16 +162,24 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
       return;
     }
 
-    const [newBottom, newTop] = getAxisYDomain(refAreaLeft, refAreaRight);
+    const leftIndex = formattedData.findIndex(d => d.timestamp === refAreaLeft);
+    const rightIndex = formattedData.findIndex(d => d.timestamp === refAreaRight);
+    
+    if (leftIndex === -1 || rightIndex === -1) return;
+    
+    const [newBottom, newTop] = getAxisYDomain(
+      Math.min(leftIndex, rightIndex),
+      Math.max(leftIndex, rightIndex)
+    );
 
     setRefAreaLeft('');
     setRefAreaRight('');
-    setLeft(refAreaLeft);
-    setRight(refAreaRight);
+    setLeft(formattedData[Math.min(leftIndex, rightIndex)].timestamp);
+    setRight(formattedData[Math.max(leftIndex, rightIndex)].timestamp);
     setBottom(newBottom);
     setTop(newTop);
     setAutoScroll(false);
-  }, [refAreaLeft, refAreaRight, getAxisYDomain]);
+  }, [refAreaLeft, refAreaRight, formattedData, getAxisYDomain]);
 
   const zoomOut = useCallback(() => {
     setRefAreaLeft('');
@@ -222,7 +214,10 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
             {autoScroll ? 'Auto-Scroll On' : 'Auto-Scroll Off'}
           </button>
           <button
-            onClick={() => setIsZooming(!isZooming)}
+            onClick={() => {
+              setIsZooming(!isZooming);
+              setIsPanning(false);
+            }}
             className={`px-3 py-1 rounded flex items-center gap-2 ${
               isZooming
                 ? isDark
@@ -237,7 +232,10 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
             {isZooming ? 'Zoom Active' : 'Zoom'}
           </button>
           <button
-            onClick={() => setIsPanning(!isPanning)}
+            onClick={() => {
+              setIsPanning(!isPanning);
+              setIsZooming(false);
+            }}
             className={`px-3 py-1 rounded flex items-center gap-2 ${
               isPanning
                 ? isDark

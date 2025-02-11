@@ -9,12 +9,12 @@ import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const dataDir = join(__dirname, 'data');
+const dataDir = join(__dirname, 'generated_data');
 
 try {
   await fs.mkdir(dataDir, { recursive: true });
 } catch (err) {
-  console.error('Error Creating Data Directory:', err);
+  console.error('Error Creating Data Directory :', err);
 }
 
 const app = express();
@@ -34,7 +34,6 @@ const sessionData = new Map();
 const portStatusCache = new Map();
 const virtualIntervals = new Map();
 
-// Simulated vital signs generator
 function generateVirtualData() {
   const baseHeartRate = 75;
   const baseOxygenSat = 98;
@@ -63,7 +62,7 @@ async function saveDataToCSV(sessionId, data) {
     console.log(`Data Saved To ${filepath}`);
     return filename;
   } catch (err) {
-    console.error('Error Saving CSV:', err);
+    console.error('Error Saving CSV :', err);
     throw err;
   }
 }
@@ -71,7 +70,6 @@ async function saveDataToCSV(sessionId, data) {
 async function checkPortStatus(portPath) {
   if (portPath === 'virtual') return 'online';
 
-  // For active connections, always return online
   if (activeConnections.has(portPath)) {
     return 'online';
   }
@@ -86,20 +84,19 @@ async function checkPortStatus(portPath) {
     return new Promise((resolve) => {
       port.open((err) => {
         if (err) {
-          console.log(`Port ${portPath} check failed:`, err.message);
+          console.log(`Port ${portPath} Check Failed :`, err.message);
           resolve('offline');
           return;
         }
         
-        // If we can open the port, it's available
         resolve('online');
         port.close((err) => {
-          if (err) console.error(`Error closing port ${portPath}:`, err);
+          if (err) console.error(`Error Closing Port ${portPath}:`, err);
         });
       });
     });
   } catch (err) {
-    console.error(`Error checking port ${portPath}:`, err);
+    console.error(`Error Checking Port ${portPath}:`, err);
     return 'offline';
   }
 }
@@ -118,7 +115,6 @@ async function listSerialPorts() {
       };
     }));
 
-    // Add virtual port
     const virtualPort = {
       id: 'virtual',
       name: 'Virtual Medical Monitor',
@@ -129,7 +125,7 @@ async function listSerialPorts() {
 
     return [virtualPort, ...portsWithStatus];
   } catch (err) {
-    console.error('Error Listing Serial Ports:', err);
+    console.error('Error Listing Serial Ports :', err);
     return [{
       id: 'virtual',
       name: 'Virtual Medical Monitor',
@@ -152,15 +148,14 @@ async function updatePorts() {
       io.emit('ports', ports);
     }
   } catch (err) {
-    console.error('Error Updating Serial Ports:', err);
+    console.error('Error Updating Serial Ports :', err);
   }
 }
 
-// Update ports more frequently
 setInterval(updatePorts, 1000);
 
 function connectArduino(portPath) {
-  console.log(`Attempting to connect to Arduino on ${portPath}`);
+  console.log(`Attempting To Connect To Arduino On ${portPath}`);
   
   const port = new SerialPort({
     path: portPath,
@@ -170,16 +165,16 @@ function connectArduino(portPath) {
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
   port.on('open', () => {
-    console.log(`Successfully opened port ${portPath}`);
+    console.log(`Successfully Opened Port ${portPath}`);
   });
 
   port.on('error', (err) => {
-    console.error(`Serial Port Error on ${portPath}:`, err);
+    console.error(`Serial Port Error On ${portPath}:`, err);
     io.emit('portError', { port: portPath, error: err.message });
   });
 
   port.on('close', () => {
-    console.log(`Port Closed: ${portPath}`);
+    console.log(`Port Closed : ${portPath}`);
     io.emit('portDisconnected', { port: portPath });
     activeConnections.delete(portPath);
   });
@@ -188,7 +183,7 @@ function connectArduino(portPath) {
 }
 
 io.on('connection', async (socket) => {
-  console.log('Client Connected:', socket.id);
+  console.log('Client Connected :', socket.id);
   const sessionId = socket.id;
   sessionData.set(sessionId, []);
   
@@ -196,7 +191,7 @@ io.on('connection', async (socket) => {
   socket.emit('ports', ports);
 
   socket.on('start', async ({ portPath, baudRate = 9600 }) => {
-    console.log(`Starting connection to ${portPath} with baudRate ${baudRate}`);
+    console.log(`Starting Connection To ${portPath} With BaudRate ${baudRate}`);
     
     try {
       if (portPath === 'virtual') {
@@ -228,10 +223,10 @@ io.on('connection', async (socket) => {
       if (!activeConnections.has(portPath)) {
         connection = connectArduino(portPath);
         activeConnections.set(portPath, connection);
-        console.log(`New connection established to ${portPath}`);
+        console.log(`New Connection Established To ${portPath}`);
       } else {
         connection = activeConnections.get(portPath);
-        console.log(`Using existing connection to ${portPath}`);
+        console.log(`Using Existing Connection To ${portPath}`);
       }
 
       connection.parser.on('data', (data) => {
@@ -255,14 +250,14 @@ io.on('connection', async (socket) => {
             }
           }
         } catch (err) {
-          console.error('Error Parsing Arduino Data:', err);
+          console.error('Error Parsing Arduino Data :', err);
         }
       });
 
       socket.emit('status', { connected: true, port: portPath });
     } catch (err) {
-      console.error('Error Starting Data Collection:', err);
-      socket.emit('error', { message: 'Failed to start data collection: ' + err.message });
+      console.error('Error Starting Data Collection :', err);
+      socket.emit('error', { message: 'Failed To Start Data Collection : ' + err.message });
     }
   });
 
@@ -280,7 +275,7 @@ io.on('connection', async (socket) => {
       connection.parser.removeAllListeners('data');
       connection.port.close((err) => {
         if (err) {
-          console.error('Error Closing Port:', err);
+          console.error('Error Closing Port :', err);
         }
       });
       activeConnections.delete(portPath);
@@ -295,14 +290,14 @@ io.on('connection', async (socket) => {
       }
     } catch (err) {
       console.error('Error Saving Session Data:', err);
-      socket.emit('error', { message: 'Failed to save session data: ' + err.message });
+      socket.emit('error', { message: 'Failed To Save Session Data : ' + err.message });
     }
 
     socket.emit('status', { connected: false, port: portPath });
   });
 
   socket.on('disconnect', () => {
-    console.log('Client Disconnected:', socket.id);
+    console.log('Client Disconnected :', socket.id);
 
     const interval = virtualIntervals.get(sessionId);
     if (interval) {
@@ -314,7 +309,7 @@ io.on('connection', async (socket) => {
       connection.parser.removeAllListeners('data');
       connection.port.close((err) => {
         if (err) {
-          console.error('Error Closing Port On Disconnect:', err);
+          console.error('Error Closing Port On Disconnect :', err);
         }
       });
       activeConnections.delete(portPath);
@@ -326,5 +321,5 @@ io.on('connection', async (socket) => {
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server Running On Port: ${PORT}`);
+  console.log(`Server Running On Port : ${PORT}`);
 });
