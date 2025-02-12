@@ -14,7 +14,7 @@ const dataDir = join(__dirname, 'generated_data');
 try {
   await fs.mkdir(dataDir, { recursive: true });
 } catch (err) {
-  console.error('Error Creating Data Directory :', err);
+  console.error('Error Creating Data Directory:', err);
 }
 
 const app = express();
@@ -34,27 +34,25 @@ const sessionData = new Map();
 const portStatusCache = new Map();
 const virtualIntervals = new Map();
 
-function generateVirtualData() {
-  const baseHeartRate = 75;
-  const baseOxygenSat = 98;
-  const time = Date.now() / 1000;
-  const heartRateVariation = Math.sin(time) * 5 + Math.random() * 2;
-  const oxygenSatVariation = Math.sin(time * 0.5) * 1 + Math.random() * 0.5;
-
-  return {
-    heartRate: baseHeartRate + heartRateVariation,
-    oxygenSat: Math.min(100, baseOxygenSat + oxygenSatVariation)
-  };
+function parseArduinoData(data) {
+  const values = {};
+  data.split(',').forEach(pair => {
+    const [key, value] = pair.trim().split(':').map(s => s.trim());
+    if (key && !isNaN(value)) {
+      values[key] = parseFloat(value);
+    }
+  });
+  return values;
 }
 
 async function saveDataToCSV(sessionId, data) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `medical_data_${sessionId}_${timestamp}.csv`;
+  const filename = `data_${sessionId}_${timestamp}.csv`;
   const filepath = join(dataDir, filename);
   
   const csvContent = [
-    'Timestamp,Heart Rate,Oxygen Saturation,Relation',
-    ...data.map(d => `${d.timestamp},${d.original},${d.processed},${d.relation}`)
+    'Timestamp,Y1,Y2,Y3,Y4',
+    ...data.map(d => `${d.timestamp},${d.Y1},${d.Y2},${d.Y3},${d.Y4}`)
   ].join('\n');
 
   try {
@@ -62,7 +60,7 @@ async function saveDataToCSV(sessionId, data) {
     console.log(`Data Saved To ${filepath}`);
     return filename;
   } catch (err) {
-    console.error('Error Saving CSV :', err);
+    console.error('Error Saving CSV:', err);
     throw err;
   }
 }
@@ -77,7 +75,7 @@ async function checkPortStatus(portPath) {
   try {
     const port = new SerialPort({
       path: portPath,
-      baudRate: 9600,
+      baudRate: 19200,
       autoOpen: false
     });
     
@@ -91,12 +89,12 @@ async function checkPortStatus(portPath) {
         
         resolve('online');
         port.close((err) => {
-          if (err) console.error(`Error Closing Port ${portPath}:`, err);
+          if (err) console.error(`Error Closing Port ${portPath} :`, err);
         });
       });
     });
   } catch (err) {
-    console.error(`Error Checking Port ${portPath}:`, err);
+    console.error(`Error Checking Port ${portPath} :`, err);
     return 'offline';
   }
 }
@@ -111,16 +109,16 @@ async function listSerialPorts() {
         name: port.friendlyName || port.path,
         type: port.manufacturer?.includes('Arduino') ? 'Arduino' : 'Unknown',
         status: status,
-        baudRate: 9600
+        baudRate: 19200
       };
     }));
 
     const virtualPort = {
       id: 'virtual',
-      name: 'Virtual Medical Monitor',
+      name: 'Virtual Data Generator',
       type: 'Virtual',
       status: 'online',
-      baudRate: 9600
+      baudRate: 19200
     };
 
     return [virtualPort, ...portsWithStatus];
@@ -128,10 +126,10 @@ async function listSerialPorts() {
     console.error('Error Listing Serial Ports :', err);
     return [{
       id: 'virtual',
-      name: 'Virtual Medical Monitor',
+      name: 'Virtual Data Generator',
       type: 'Virtual',
       status: 'online',
-      baudRate: 9600
+      baudRate: 19200
     }];
   }
 }
@@ -159,7 +157,7 @@ function connectArduino(portPath) {
   
   const port = new SerialPort({
     path: portPath,
-    baudRate: 9600
+    baudRate: 19200
   });
 
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
@@ -174,7 +172,7 @@ function connectArduino(portPath) {
   });
 
   port.on('close', () => {
-    console.log(`Port Closed : ${portPath}`);
+    console.log(`Port Closed: ${portPath}`);
     io.emit('portDisconnected', { port: portPath });
     activeConnections.delete(portPath);
   });
@@ -182,29 +180,35 @@ function connectArduino(portPath) {
   return { port, parser };
 }
 
+function generateVirtualData() {
+  const time = Date.now() / 1000;
+  return {
+    Y1: Math.sin(time) * 50 + 50 + Math.random() * 5,
+    Y2: Math.cos(time) * 50 + 50 + Math.random() * 5,
+    Y3: Math.sin(time * 0.5) * 50 + 50 + Math.random() * 5,
+    Y4: Math.cos(time * 0.5) * 50 + 50 + Math.random() * 5
+  };
+}
+
 io.on('connection', async (socket) => {
-  console.log('Client Connected :', socket.id);
+  console.log('Client Connected:', socket.id);
   const sessionId = socket.id;
   sessionData.set(sessionId, []);
   
   const ports = await listSerialPorts();
   socket.emit('ports', ports);
 
-  socket.on('start', async ({ portPath, baudRate = 9600 }) => {
-    console.log(`Starting Connection To ${portPath} With BaudRate ${baudRate}`);
+  socket.on('start', async ({ portPath }) => {
+    console.log(`Starting Connection To ${portPath}`);
     
     try {
       if (portPath === 'virtual') {
         const interval = setInterval(() => {
-          const { heartRate, oxygenSat } = generateVirtualData();
+          const values = generateVirtualData();
           const timestamp = Date.now();
-          const relationValue = (heartRate + oxygenSat) / 2;
-
           const dataPoint = {
             timestamp,
-            original: heartRate,
-            processed: oxygenSat,
-            relation: relationValue
+            ...values
           };
 
           const sessionDataArray = sessionData.get(sessionId);
@@ -212,7 +216,7 @@ io.on('connection', async (socket) => {
             sessionDataArray.push(dataPoint);
             socket.emit('data', dataPoint);
           }
-        }, 1000);
+        }, 100);
 
         virtualIntervals.set(sessionId, interval);
         socket.emit('status', { connected: true, port: portPath });
@@ -231,16 +235,16 @@ io.on('connection', async (socket) => {
 
       connection.parser.on('data', (data) => {
         try {
-          const [heartRate, oxygenSat] = data.trim().split(',').map(Number);
-          if (!isNaN(heartRate) && !isNaN(oxygenSat)) {
+          const values = parseArduinoData(data);
+          if (values.Y1 !== undefined && values.Y2 !== undefined && 
+              values.Y3 !== undefined && values.Y4 !== undefined) {
             const timestamp = Date.now();
-            const relationValue = (heartRate + oxygenSat) / 2;
-
             const dataPoint = {
               timestamp,
-              original: heartRate,
-              processed: oxygenSat,
-              relation: relationValue
+              Y1: values.Y1,
+              Y2: values.Y2,
+              Y3: values.Y3,
+              Y4: values.Y4
             };
 
             const sessionDataArray = sessionData.get(sessionId);
@@ -256,13 +260,13 @@ io.on('connection', async (socket) => {
 
       socket.emit('status', { connected: true, port: portPath });
     } catch (err) {
-      console.error('Error Starting Data Collection :', err);
+      console.error('Error Starting Data Collection:', err);
       socket.emit('error', { message: 'Failed To Start Data Collection : ' + err.message });
     }
   });
 
   socket.on('stop', async ({ portPath }) => {
-    console.log(`Stopping connection to ${portPath}`);
+    console.log(`Stopping Connection To ${portPath}`);
     
     if (portPath === 'virtual') {
       const interval = virtualIntervals.get(sessionId);
