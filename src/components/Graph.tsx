@@ -20,6 +20,85 @@ interface GraphProps {
   isDark: boolean;
 }
 
+const Navbar: React.FC<{
+  autoScroll: boolean;
+  isZooming: boolean;
+  isPanning: boolean;
+  toggleAutoScroll: () => void;
+  toggleZooming: () => void;
+  togglePanning: () => void;
+  resetView: () => void;
+  isDark: boolean;
+}> = ({
+  autoScroll,
+  isZooming,
+  isPanning,
+  toggleAutoScroll,
+  toggleZooming,
+  togglePanning,
+  resetView,
+  isDark,
+}) => (
+  <div className="flex gap-4">
+    <button
+      onClick={toggleAutoScroll}
+      className={`px-3 py-1 rounded flex items-center gap-2 ${
+        autoScroll
+          ? isDark
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'bg-blue-500 text-white hover:bg-blue-600'
+          : isDark
+          ? 'bg-gray-700 text-white hover:bg-gray-600'
+          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+      }`}
+    >
+      <span className="hidden sm:inline">{autoScroll ? 'Auto-Scroll On' : 'Auto-Scroll Off'}</span>
+      <span className="sm:hidden">AS</span>
+    </button>
+    <button
+      onClick={toggleZooming}
+      className={`px-3 py-1 rounded flex items-center gap-2 ${
+        isZooming
+          ? isDark
+            ? 'bg-purple-600 text-white hover:bg-purple-700'
+            : 'bg-purple-500 text-white hover:bg-purple-600'
+          : isDark
+          ? 'bg-gray-700 text-white hover:bg-gray-600'
+          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+      }`}
+    >
+      {isZooming ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
+      <span className="hidden sm:inline">{isZooming ? 'Zoom Active' : 'Zoom'}</span>
+    </button>
+    <button
+      onClick={togglePanning}
+      className={`px-3 py-1 rounded flex items-center gap-2 ${
+        isPanning
+          ? isDark
+            ? 'bg-green-600 text-white hover:bg-green-700'
+            : 'bg-green-500 text-white hover:bg-green-600'
+          : isDark
+          ? 'bg-gray-700 text-white hover:bg-gray-600'
+          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+      }`}
+    >
+      <MoveHorizontal size={16} />
+      <span className="hidden sm:inline">{isPanning ? 'Pan Active' : 'Pan'}</span>
+    </button>
+    <button
+      onClick={resetView}
+      className={`px-3 py-1 rounded ${
+        isDark
+          ? 'bg-gray-700 text-white hover:bg-gray-600'
+          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+      }`}
+    >
+      <span className="hidden sm:inline">Reset View</span>
+      <span className="sm:hidden">RV</span>
+    </button>
+  </div>
+);
+
 const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
   const [left, setLeft] = useState<string | null>(null);
   const [right, setRight] = useState<string | null>(null);
@@ -82,7 +161,7 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     const currentLeftIndex = left ? formattedData.findIndex(d => d.timestamp === left) : 0;
     const currentRightIndex = right ? formattedData.findIndex(d => d.timestamp === right) : dataLength - 1;
     
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1; // Reversed for intuitive zoom
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     const range = currentRightIndex - currentLeftIndex;
     const newRange = Math.max(10, Math.min(dataLength, Math.round(range / zoomFactor)));
     
@@ -198,68 +277,22 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     >
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>{title}</h3>
-        <div className="flex gap-4">
-          <button
-            onClick={() => setAutoScroll(!autoScroll)}
-            className={`px-3 py-1 rounded flex items-center gap-2 ${
-              autoScroll
-                ? isDark
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-                : isDark
-                ? 'bg-gray-700 text-white hover:bg-gray-600'
-                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-            }`}
-          >
-            {autoScroll ? 'Auto-Scroll On' : 'Auto-Scroll Off'}
-          </button>
-          <button
-            onClick={() => {
-              setIsZooming(!isZooming);
-              setIsPanning(false);
-            }}
-            className={`px-3 py-1 rounded flex items-center gap-2 ${
-              isZooming
-                ? isDark
-                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                  : 'bg-purple-500 text-white hover:bg-purple-600'
-                : isDark
-                ? 'bg-gray-700 text-white hover:bg-gray-600'
-                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-            }`}
-          >
-            {isZooming ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
-            {isZooming ? 'Zoom Active' : 'Zoom'}
-          </button>
-          <button
-            onClick={() => {
-              setIsPanning(!isPanning);
-              setIsZooming(false);
-            }}
-            className={`px-3 py-1 rounded flex items-center gap-2 ${
-              isPanning
-                ? isDark
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-green-500 text-white hover:bg-green-600'
-                : isDark
-                ? 'bg-gray-700 text-white hover:bg-gray-600'
-                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-            }`}
-          >
-            <MoveHorizontal size={16} />
-            {isPanning ? 'Pan Active' : 'Pan'}
-          </button>
-          <button
-            onClick={zoomOut}
-            className={`px-3 py-1 rounded ${
-              isDark
-                ? 'bg-gray-700 text-white hover:bg-gray-600'
-                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-            }`}
-          >
-            Reset View
-          </button>
-        </div>
+        <Navbar
+          autoScroll={autoScroll}
+          isZooming={isZooming}
+          isPanning={isPanning}
+          toggleAutoScroll={() => setAutoScroll(!autoScroll)}
+          toggleZooming={() => {
+            setIsZooming(!isZooming);
+            setIsPanning(false);
+          }}
+          togglePanning={() => {
+            setIsPanning(!isPanning);
+            setIsZooming(false);
+          }}
+          resetView={zoomOut}
+          isDark={isDark}
+        />
       </div>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
