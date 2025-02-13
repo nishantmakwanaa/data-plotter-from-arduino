@@ -31,7 +31,6 @@ app.use('/data', express.static('data'));
 
 const activeConnections = new Map();
 const sessionData = new Map();
-const portStatusCache = new Map();
 const virtualIntervals = new Map();
 
 function parseArduinoData(data) {
@@ -49,10 +48,12 @@ async function saveDataToCSV(sessionId, data) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `data_${sessionId}_${timestamp}.csv`;
   const filepath = join(dataDir, filename);
-  
+
+  const csvHeader = 'Index,Y1 Live,Y1 Proceed,Y1 Relational,Y2 Live,Y2 Proceed,Y2 Relational,Y3 Live,Y3 Proceed,Y3 Relational,Y4 Live,Y4 Proceed,Y4 Relational';
+
   const csvContent = [
-    'Timestamp,Y1,Y2,Y3,Y4',
-    ...data.map(d => `${d.timestamp},${d.Y1},${d.Y2},${d.Y3},${d.Y4}`)
+    csvHeader,
+    ...data.map((d, index) => `${index},${d.Y1Live},${d.Y1Proceed},${d.Y1Relational},${d.Y2Live},${d.Y2Proceed},${d.Y2Relational},${d.Y3Live},${d.Y3Proceed},${d.Y3Relational},${d.Y4Live},${d.Y4Proceed},${d.Y4Relational}`)
   ].join('\n');
 
   try {
@@ -183,10 +184,18 @@ function connectArduino(portPath) {
 function generateVirtualData() {
   const time = Date.now() / 1000;
   return {
-    Y1: Math.sin(time) * 50 + 50 + Math.random() * 5,
-    Y2: Math.cos(time) * 50 + 50 + Math.random() * 5,
-    Y3: Math.sin(time * 0.5) * 50 + 50 + Math.random() * 5,
-    Y4: Math.cos(time * 0.5) * 50 + 50 + Math.random() * 5
+    Y1Live: Math.sin(time) * 50 + 50 + Math.random() * 5,
+    Y1Proceed: Math.sin(time) * 50 + 50 + Math.random() * 5,
+    Y1Relational: Math.sin(time) * 50 + 50 + Math.random() * 5,
+    Y2Live: Math.cos(time) * 50 + 50 + Math.random() * 5,
+    Y2Proceed: Math.cos(time) * 50 + 50 + Math.random() * 5,
+    Y2Relational: Math.cos(time) * 50 + 50 + Math.random() * 5,
+    Y3Live: Math.sin(time * 0.5) * 50 + 50 + Math.random() * 5,
+    Y3Proceed: Math.sin(time * 0.5) * 50 + 50 + Math.random() * 5,
+    Y3Relational: Math.sin(time * 0.5) * 50 + 50 + Math.random() * 5,
+    Y4Live: Math.cos(time * 0.5) * 50 + 50 + Math.random() * 5,
+    Y4Proceed: Math.cos(time * 0.5) * 50 + 50 + Math.random() * 5,
+    Y4Relational: Math.cos(time * 0.5) * 50 + 50 + Math.random() * 5
   };
 }
 
@@ -241,10 +250,18 @@ io.on('connection', async (socket) => {
             const timestamp = Date.now();
             const dataPoint = {
               timestamp,
-              Y1: values.Y1,
-              Y2: values.Y2,
-              Y3: values.Y3,
-              Y4: values.Y4
+              Y1Live: values.Y1,
+              Y1Proceed: values.Y1,
+              Y1Relational: values.Y1,
+              Y2Live: values.Y2,
+              Y2Proceed: values.Y2,
+              Y2Relational: values.Y2,
+              Y3Live: values.Y3,
+              Y3Proceed: values.Y3,
+              Y3Relational: values.Y3,
+              Y4Live: values.Y4,
+              Y4Proceed: values.Y4,
+              Y4Relational: values.Y4
             };
 
             const sessionDataArray = sessionData.get(sessionId);
