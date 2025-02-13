@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ProcessedData, Theme, DataPoint } from '../utils/types';
+import { ProcessedData, Theme, StreamlineData } from '../utils/types';
 import Graph from '../components/Graph';
 
 interface CsvDataProps {
@@ -73,21 +73,30 @@ function CsvData({ theme }: CsvDataProps) {
       ) : (
         <div className="space-y-12 w-full">
           <Graph
-            data={data.original as DataPoint[]}
-            title="Original Data"
-            color="#2563eb"
+            streamlineId="original-data"
+            data={{
+              original: data.original,
+              processed: [],
+              relation: [],
+            } as StreamlineData}
             isDark={theme.isDark}
           />
           <Graph
-            data={data.processed as DataPoint[]}
-            title="Processed Data"
-            color="#16a34a"
+            streamlineId="processed-data"
+            data={{
+              original: [],
+              processed: data.processed,
+              relation: [],
+            } as StreamlineData}
             isDark={theme.isDark}
           />
           <Graph
-            data={data.relation as DataPoint[]}
-            title="Relational Data"
-            color="#9333ea"
+            streamlineId="relation-data"
+            data={{
+              original: [],
+              processed: [],
+              relation: data.relation,
+            } as StreamlineData}
             isDark={theme.isDark}
           />
 
