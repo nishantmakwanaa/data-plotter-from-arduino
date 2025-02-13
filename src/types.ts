@@ -26,3 +26,9 @@ export type StreamlineData = {
 export type StreamlinesData = {
   [key: string]: StreamlineData;
 };
+
+export interface ProcessedData {
+  original: DataPoint[];
+  processed: DataPoint[];
+  relation: DataPoint[];
+}
