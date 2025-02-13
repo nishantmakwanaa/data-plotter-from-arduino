@@ -1,6 +1,6 @@
 import React from 'react';
 import { Play, Square, Wifi, WifiOff } from 'lucide-react';
-import { Operation, Theme, Port } from '../types';
+import { Operation, Theme, Port } from '../utils/types';
 
 interface ControlsProps {
   isRunning: boolean;

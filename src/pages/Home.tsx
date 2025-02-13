@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, FileSpreadsheet } from 'lucide-react';
-import { Theme } from '../types';
+import { Theme } from '../utils/types';
 
 interface HomeProps {
   theme: Theme;
 }
 
-const Home: React.FC<HomeProps> = ({ theme }) => {
+const Home: React.FC<HomeProps> = ({ theme }: { theme: Theme }) => {
   return (
     <div className="min-h-screen space-y-8 flex items-center justify-center">
       <div className={`p-8 rounded-lg shadow-lg ${theme.isDark ? 'bg-gray-800' : 'bg-white'}`}>

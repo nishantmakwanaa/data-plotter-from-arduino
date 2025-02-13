@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Operation, Port, Theme, StreamlinesData } from '../types';
-import StreamlineGraphs from '../components/StreamlineGraphs';
+import { Operation, Port, Theme, StreamlinesData } from '../utils/types';
+import StreamlineGraphs from '../components/Graph';
 import Controls from '../components/Controls';
 import io, { Socket } from 'socket.io-client';
 
