@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Operation, Port, Theme, StreamlinesData } from '../utils/types';
+import { Operation, Port, Theme, StreamlinesData, DataPoint } from '../utils/types';
 import StreamlineGraphs from '../components/Graph';
 import Controls from '../components/Controls';
 import io, { Socket } from 'socket.io-client';
@@ -36,24 +36,18 @@ function LiveData({ theme }: LiveDataProps) {
       }
     });
 
-    newSocket.on('data', (newData: {
-      timestamp: number;
-      Y1: number;
-      Y2: number;
-      Y3: number;
-      Y4: number;
-    }) => {
+    newSocket.on('data', (newData: DataPoint) => {
       setData(prev => {
         const newState = { ...prev };
         ['Y1', 'Y2', 'Y3', 'Y4'].forEach(streamline => {
-          const value = newData[streamline as keyof typeof newData];
-          const processedValue = applyOperation(value, operation, operationValue);
-          const relationValue = calculateRelation(value, processedValue);
+          const liveValue = newData[`${streamline}Live` as keyof DataPoint];
+          const proceedValue = newData[`${streamline}Proceed` as keyof DataPoint];
+          const relationalValue = newData[`${streamline}Relational` as keyof DataPoint];
 
           newState[streamline] = {
-            original: [...prev[streamline].original, { timestamp: newData.timestamp, value }].slice(-MAX_POINTS),
-            processed: [...prev[streamline].processed, { timestamp: newData.timestamp, value: processedValue }].slice(-MAX_POINTS),
-            relation: [...prev[streamline].relation, { timestamp: newData.timestamp, value: relationValue }].slice(-MAX_POINTS),
+            original: [...prev[streamline].original, { ...newData, value: liveValue }].slice(-MAX_POINTS),
+            processed: [...prev[streamline].processed, { ...newData, value: proceedValue }].slice(-MAX_POINTS),
+            relation: [...prev[streamline].relation, { ...newData, value: relationalValue }].slice(-MAX_POINTS),
           };
         });
         return newState;
@@ -83,20 +77,6 @@ function LiveData({ theme }: LiveDataProps) {
     };
   }, [selectedPort]);
 
-  const applyOperation = (value: number, op: Operation, opValue: number): number => {
-    switch (op) {
-      case 'add': return value + opValue;
-      case 'subtract': return value - opValue;
-      case 'multiply': return value * opValue;
-      case 'divide': return value / opValue;
-      default: return value;
-    }
-  };
-
-  const calculateRelation = (original: number, processed: number): number => {
-    return (original + processed) / 2;
-  };
-
   const handleStart = () => {
     if (socket && selectedPort) {
       setError('');
@@ -123,9 +103,7 @@ function LiveData({ theme }: LiveDataProps) {
   return (
     <div className="space-y-8">
       {error && (
-        <div className={`p-4 rounded-lg ${theme.isDark ? 'bg-red-900' : 'bg-red-100'} ${
-          theme.isDark ? 'text-red-200' : 'text-red-900'
-        }`}>
+        <div className={`p-4 rounded-lg ${theme.isDark ? 'bg-red-900' : 'bg-red-100'} ${theme.isDark ? 'text-red-200' : 'text-red-900'}`}>
           {error}
         </div>
       )}

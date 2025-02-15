@@ -14,8 +14,19 @@ export type Port = {
 };
 
 export type DataPoint = {
-  timestamp: number;
-  value: number;
+  index: number;
+  Y1Live: number;
+  Y1Proceed: number;
+  Y1Relational: number;
+  Y2Live: number;
+  Y2Proceed: number;
+  Y2Relational: number;
+  Y3Live: number;
+  Y3Proceed: number;
+  Y3Relational: number;
+  Y4Live: number;
+  Y4Proceed: number;
+  Y4Relational: number;
 };
 
 export type StreamlineData = {
@@ -27,7 +38,6 @@ export type StreamlineData = {
 export type StreamlinesData = {
   [key: string]: StreamlineData;
 };
-
 export interface ProcessedData {
   original: DataPoint[];
   processed: DataPoint[];

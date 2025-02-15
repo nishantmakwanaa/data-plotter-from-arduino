@@ -119,28 +119,22 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const formattedData = data.map(point => ({
-    timestamp: new Date(point.timestamp).toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }),
-    value: point.value,
-    rawTimestamp: point.timestamp
+    index: point.index,
+    value: point.Y1Live, // Assuming Y1Live is the value you want to plot
   }));
 
   useEffect(() => {
     if (autoScroll && formattedData.length > 0) {
-      const lastTimestamp = formattedData[formattedData.length - 1].timestamp;
+      const lastIndex = formattedData[formattedData.length - 1].index;
       if (!left && !right) {
         const startIndex = Math.max(0, formattedData.length - 30);
-        setLeft(formattedData[startIndex]?.timestamp || null);
-        setRight(lastTimestamp);
+        setLeft(formattedData[startIndex]?.index.toString() || null);
+        setRight(lastIndex.toString());
       } else if (right) {
-        setRight(lastTimestamp);
-        const startIndex = formattedData.findIndex(d => d.timestamp === left);
+        setRight(lastIndex.toString());
+        const startIndex = formattedData.findIndex(d => d.index.toString() === left);
         if (startIndex >= 0) {
-          setLeft(formattedData[Math.max(0, startIndex)].timestamp);
+          setLeft(formattedData[Math.max(0, startIndex)].index.toString());
         }
       }
     }
@@ -164,8 +158,8 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     e.preventDefault();
 
     const dataLength = formattedData.length;
-    const currentLeftIndex = left ? formattedData.findIndex(d => d.timestamp === left) : 0;
-    const currentRightIndex = right ? formattedData.findIndex(d => d.timestamp === right) : dataLength - 1;
+    const currentLeftIndex = left ? formattedData.findIndex(d => d.index.toString() === left) : 0;
+    const currentRightIndex = right ? formattedData.findIndex(d => d.index.toString() === right) : dataLength - 1;
     
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     const range = currentRightIndex - currentLeftIndex;
@@ -177,8 +171,8 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     const newLeftIndex = Math.max(0, centerIndex - halfRange);
     const newRightIndex = Math.min(dataLength - 1, centerIndex + halfRange);
 
-    const newLeft = formattedData[newLeftIndex]?.timestamp;
-    const newRight = formattedData[newRightIndex]?.timestamp;
+    const newLeft = formattedData[newLeftIndex]?.index !== undefined ? formattedData[newLeftIndex].index.toString() : null;
+    const newRight = formattedData[newRightIndex]?.index !== undefined ? formattedData[newRightIndex].index.toString() : null;
 
     if (newLeft && newRight) {
       setLeft(newLeft);
@@ -201,8 +195,8 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     const rect = containerRef.current.getBoundingClientRect();
     const deltaX = (e.clientX - startX) / rect.width;
     
-    const leftIndex = left ? formattedData.findIndex(d => d.timestamp === left) : 0;
-    const rightIndex = right ? formattedData.findIndex(d => d.timestamp === right) : formattedData.length - 1;
+    const leftIndex = left ? formattedData.findIndex(d => d.index.toString() === left) : 0;
+    const rightIndex = right ? formattedData.findIndex(d => d.index.toString() === right) : formattedData.length - 1;
     const range = rightIndex - leftIndex;
     
     const shift = Math.round(range * deltaX);
@@ -211,8 +205,8 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
     const newLeftIndex = Math.max(0, leftIndex - shift);
     const newRightIndex = Math.min(formattedData.length - 1, rightIndex - shift);
 
-    setLeft(formattedData[newLeftIndex]?.timestamp || null);
-    setRight(formattedData[newRightIndex]?.timestamp || null);
+    setLeft(formattedData[newLeftIndex]?.index.toString() || null);
+    setRight(formattedData[newRightIndex]?.index.toString() || null);
     setStartX(e.clientX);
     setAutoScroll(false);
   }, [isPanning, startX, left, right, formattedData]);
@@ -247,8 +241,8 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
       return;
     }
 
-    const leftIndex = formattedData.findIndex(d => d.timestamp === refAreaLeft);
-    const rightIndex = formattedData.findIndex(d => d.timestamp === refAreaRight);
+    const leftIndex = formattedData.findIndex(d => d.index.toString() === refAreaLeft);
+    const rightIndex = formattedData.findIndex(d => d.index.toString() === refAreaRight);
     
     if (leftIndex === -1 || rightIndex === -1) return;
     
@@ -259,8 +253,8 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
 
     setRefAreaLeft('');
     setRefAreaRight('');
-    setLeft(formattedData[Math.min(leftIndex, rightIndex)].timestamp);
-    setRight(formattedData[Math.max(leftIndex, rightIndex)].timestamp);
+    setLeft(formattedData[Math.min(leftIndex, rightIndex)].index.toString());
+    setRight(formattedData[Math.max(leftIndex, rightIndex)].index.toString());
     setBottom(newBottom);
     setTop(newTop);
     setAutoScroll(false);
@@ -309,10 +303,10 @@ const Graph: React.FC<GraphProps> = ({ data, title, color, isDark }) => {
         >
           <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
           <XAxis
-            dataKey="timestamp"
+            dataKey="index"
             allowDataOverflow
             domain={[left || 'auto', right || 'auto']}
-            type="category"
+            type="number"
             tick={{ fill: isDark ? '#D1D5DB' : '#374151' }}
             interval="preserveStartEnd"
           />
